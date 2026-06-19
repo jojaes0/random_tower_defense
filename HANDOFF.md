@@ -97,6 +97,16 @@ src/
 | 맵 구조·경로·셀 크기 | `src/engine/path.ts` (`MAP`, `ROUTE`, `CELL`) |
 | 사거리 환산 비율 | `src/engine/balance.ts` (`RANGE_SCALE`) |
 
+## 9. 배포 (GitHub Pages, 모바일 웹 플레이)
+- **빌드는 GitHub Actions(Ubuntu)에서 수행** → 로컬 Node24+Windows 빌드 크래시와 무관.
+- 설정 파일: `.github/workflows/deploy.yml`(Node20으로 빌드→Pages 배포), `vite.config.ts`의 `base: './'`.
+- 절차:
+  1. GitHub에서 새 **public** 리포 생성(README 등 초기화 없이).
+  2. `git remote add origin https://github.com/<USER>/<REPO>.git` → `git push -u origin main`
+  3. 리포 **Settings → Pages → Source = GitHub Actions** 로 설정.
+  4. Actions 탭에서 배포 완료되면 `https://<USER>.github.io/<REPO>/` 접속(모바일 가능).
+- 이후 `main`에 push할 때마다 자동 재배포.
+
 ## 8. 검증 방법(이번 세션에서 쓴 방식)
 - 타입체크: `npx vue-tsc --noEmit`
 - dev 서빙 확인: `npm run dev` 후 `http://localhost:5173/` 200 + 모듈 컴파일 에러 0
