@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest # 리눅스 → 로컬(Node24+Windows) 빌드 크래시와 무관
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5 # 실행 중 Pages 보장 활성화 → "Pages not enabled" 404 방지
+        with:
+          enablement: true
       - uses: actions/setup-node@v4
         with:
           node-version: 20 # LTS
