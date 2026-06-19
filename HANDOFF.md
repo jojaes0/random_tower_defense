@@ -103,7 +103,7 @@ src/
 - 절차:
   1. GitHub에서 새 **public** 리포 생성(README 등 초기화 없이).
   2. `git remote add origin https://github.com/<USER>/<REPO>.git` → `git push -u origin main`
-  3. 리포 **Settings → Pages → Source = GitHub Actions** 로 설정.
+  3. 리포 **Settings → Pages → Source = GitHub Actions** 로 설정(필수 — 워크플로에 자동 활성화 없음).
   4. Actions 탭에서 배포 완료되면 `https://<USER>.github.io/<REPO>/` 접속(모바일 가능).
 - 이후 `main`에 push할 때마다 자동 재배포.
 

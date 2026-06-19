@@ -19,9 +19,6 @@ jobs:
     runs-on: ubuntu-latest # 리눅스 → 로컬(Node24+Windows) 빌드 크래시와 무관
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5 # Pages 자동 활성화(Settings 수동 설정 불필요)
-        with:
-          enablement: true
       - uses: actions/setup-node@v4
         with:
           node-version: 20 # LTS
