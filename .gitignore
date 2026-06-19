@@ -1,0 +1,14 @@
+# 의존성 (다른 PC에서 npm install로 복원)
+node_modules/
+
+# 빌드 산출물
+dist/
+
+# 로그/캐시
+*.log
+.vite/
+
+# 에디터
+.vscode/
+.idea/
+.DS_Store

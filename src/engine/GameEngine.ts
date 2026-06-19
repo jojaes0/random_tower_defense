@@ -1,0 +1,679 @@
+// 게임 엔진 — 실제 RTD 구조 + 난이도/클럭/개인미션/스킬/디버프/무한모드.
+// (Vue 비의존 순수 로직)
+
+import { BALANCE, DIFFICULTIES, RANGE_SCALE, RARITY_META, nextRarity } from './balance'
+import {
+  BOSS_BLUEPRINT,
+  MISSION_BLUEPRINT,
+  MOB_BLUEPRINT,
+  PERSONAL_MISSIONS,
+  QUESTS,
+  RACE_BY_ID,
+  TOWERS_BY_RARITY,
+  TOWERS_BY_ID,
+} from './content'
+import { PATH_LENGTH, isBuildableCell, pointAtDistance, snapToGrid } from './path'
+import { ROUND_HP_HELL, endlessHellHp } from './roundHp'
+import type {
+  Difficulty,
+  Enemy,
+  EnemyBlueprint,
+  GamePhase,
+  PersonalMission,
+  Projectile,
+  RaceId,
+  Tower,
+  TowerBlueprint,
+  UpgradeLevels,
+  Vec2,
+} from './types'
+
+export interface GameState {
+  phase: GamePhase
+  difficulty: Difficulty | null
+  round: number
+  endless: boolean
+  /** 첫 라운드를 수동으로 시작했는지(이후부터 자동 시작) */
+  autoStarted: boolean
+  /** 다음 라운드 자동 시작까지 남은 시간(초). 0이면 카운트 없음 */
+  nextRoundCountdown: number
+  elapsed: number // 초
+  minerals: number
+  gas: number
+  terrazine: number
+  life: number
+  upgrades: UpgradeLevels
+  towers: Tower[]
+  enemies: Enemy[]
+  projectiles: Projectile[]
+  missions: PersonalMission[]
+  selectedTowerUid: number | null
+  killCount: number
+  questsDone: Record<string, boolean>
+  lastGasGamble: number | null
+  notifications: GameNotification[]
+  message: string
+}
+
+/** 보상/달성 토스트 */
+export interface GameNotification {
+  id: number
+  kind: 'quest' | 'boss' | 'mission'
+  title: string
+  detail: string
+}
+
+const randItem = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
+
+export class GameEngine {
+  state: GameState
+  private uid = 1
+  private spawnQueue: Enemy[] = []
+  private spawnTimer = 0
+  private onChange: () => void
+
+  constructor(onChange: () => void) {
+    this.onChange = onChange
+    this.state = this.freshState()
+  }
+
+  private freshState = (): GameState => ({
+    phase: 'select-difficulty',
+    difficulty: null,
+    round: 0,
+    endless: false,
+    autoStarted: false,
+    nextRoundCountdown: 0,
+    elapsed: 0,
+    minerals: BALANCE.startMinerals,
+    gas: 0,
+    terrazine: 0,
+    life: 20,
+    upgrades: { terran: 0, protoss: 0, zerg: 0 },
+    towers: [],
+    enemies: [],
+    projectiles: [],
+    missions: PERSONAL_MISSIONS.map((m) => ({ ...m, cooldownRemaining: 0, active: false, clears: 0 })),
+    selectedTowerUid: null,
+    killCount: 0,
+    questsDone: {},
+    lastGasGamble: null,
+    notifications: [],
+    message: '난이도를 선택하세요.',
+  })
+
+  private notify = (kind: GameNotification['kind'], title: string, detail: string): void => {
+    this.state.notifications.push({ id: this.nextUid(), kind, title, detail })
+    if (this.state.notifications.length > 4) this.state.notifications.shift()
+  }
+
+  /** Vue 레이어에서 일정 시간 후 토스트 제거 */
+  dismissNotification = (id: number): void => {
+    const i = this.state.notifications.findIndex((n) => n.id === id)
+    if (i >= 0) this.state.notifications.splice(i, 1)
+  }
+
+  private nextUid = (): number => this.uid++
+
+  // -------------------------------------------------------------------------
+  // 시작 / 라운드
+  // -------------------------------------------------------------------------
+
+  chooseDifficulty = (id: string): void => {
+    const d = DIFFICULTIES.find((x) => x.id === id)
+    if (!d) return
+    this.state.difficulty = d
+    this.state.life = d.startLife
+    this.state.minerals += d.startMineralBonus
+    this.state.gas += d.startGasBonus
+    this.state.phase = 'building'
+    this.state.message = `${d.name} 시작! 일반 타워를 짓고 같은 종류 2개를 합성하세요.`
+    this.onChange()
+  }
+
+  private isBossRound = (round: number): boolean => round % BALANCE.bossEvery === 0
+
+  /** 다음 라운드 미리보기(잡몹 수·체력) — 라운드마다 체력이 오르는 걸 보여주기 위함 */
+  nextRoundPreview = (): { round: number; type: 'mob' | 'boss'; count: number; hp: number } | null => {
+    if (this.state.difficulty == null) return null
+    const round = this.state.round + 1
+    if (!this.state.endless && round > BALANCE.totalRounds) return null
+    const hp = Math.round(this.roundMobHp(round)) // 테이블 값(보스 라운드면 보스 체력)
+    if (this.isBossRound(round)) return { round, type: 'boss', count: 1, hp }
+    return { round, type: 'mob', count: Math.floor(BALANCE.mobBase + round * BALANCE.mobPerRound), hp }
+  }
+
+  startNextRound = (): void => {
+    if (this.state.phase !== 'building') return
+    if (!this.state.endless && this.state.round >= BALANCE.totalRounds) return
+    this.state.autoStarted = true // 첫 수동 시작 이후로는 자동 진행
+    this.state.nextRoundCountdown = 0
+    this.state.round++
+    this.state.phase = 'wave'
+    this.buildSpawnQueue(this.state.round)
+    this.spawnTimer = 0
+    this.state.message = `라운드 ${this.state.round} 시작!`
+    this.onChange()
+  }
+
+  /** 라운드 체력(실측 테이블 × 난이도). 보스 라운드면 보스 1마리 총 체력, 그 외는 마리당 체력. */
+  private roundMobHp = (round: number): number => {
+    const hellHp = round <= 50 ? ROUND_HP_HELL[round - 1] : endlessHellHp(round)
+    return hellHp * ((this.state.difficulty?.hpMult ?? 5) / 5) // 테이블은 지옥(=500%) 기준
+  }
+
+  private buildSpawnQueue = (round: number): void => {
+    const queue: Enemy[] = []
+    const hp = this.roundMobHp(round)
+    const speed = BALANCE.enemySpeedUnit * RANGE_SCALE // 모든 몹 공통 4.5
+    if (this.isBossRound(round)) {
+      // 테이블 값이 곧 보스 체력 (이동속도도 동일 4.5)
+      queue.push(this.makeEnemy(BOSS_BLUEPRINT, hp, speed, BALANCE.bossBounty, { isBoss: true }))
+    } else {
+      const count = Math.floor(BALANCE.mobBase + round * BALANCE.mobPerRound)
+      for (let i = 0; i < count; i++) queue.push(this.makeEnemy(MOB_BLUEPRINT, hp, speed, BALANCE.mobBounty, {}))
+    }
+    this.spawnQueue = queue
+  }
+
+  private makeEnemy = (
+    bp: EnemyBlueprint,
+    hp: number,
+    speed: number,
+    bounty: number,
+    opts: { isBoss?: boolean; isMission?: boolean; missionId?: string; roundBound?: boolean },
+  ): Enemy => ({
+    uid: this.nextUid(),
+    blueprint: bp,
+    hp: Math.round(hp),
+    maxHp: Math.round(hp),
+    speed,
+    progress: 0,
+    pos: pointAtDistance(0),
+    isBoss: opts.isBoss ?? false,
+    isMission: opts.isMission ?? false,
+    missionId: opts.missionId ?? null,
+    roundBound: opts.roundBound ?? true,
+    bounty,
+    slowTimer: 0,
+    slowFactor: 1,
+    stunTimer: 0,
+  })
+
+  // -------------------------------------------------------------------------
+  // 개인 미션
+  // -------------------------------------------------------------------------
+
+  triggerMission = (id: string): boolean => {
+    if (this.state.phase === 'select-difficulty') return false
+    const m = this.state.missions.find((x) => x.id === id)
+    if (!m) return false
+    if (m.active) return this.fail(`${m.name} 미션 진행 중입니다.`)
+    if (m.cooldownRemaining > 0) return this.fail(`${m.name} 쿨다운 ${Math.ceil(m.cooldownRemaining)}초`)
+    // 나무위키 기본 체력 × 난이도 배율(난이도에 따라 체력이 달라진다)
+    const hp = m.hp * (this.state.difficulty?.hpMult ?? 1)
+    const speed = BALANCE.enemySpeedUnit * RANGE_SCALE
+    // 라운드 중(wave) 소환이면 라운드 종료를 막고, 대기 중(building) 소환이면 라운드와 별개로 진행
+    const roundBound = this.state.phase === 'wave'
+    this.state.enemies.push(this.makeEnemy(MISSION_BLUEPRINT, hp, speed, m.reward, { isMission: true, missionId: id, roundBound }))
+    m.active = true
+    m.cooldownRemaining = m.cooldown
+    this.state.message = `개인 미션 [${m.key}] ${m.name} 소환!${roundBound ? '' : '(라운드와 별개)'} 처치 시 +${m.reward} 미네랄`
+    this.onChange()
+    return true
+  }
+
+  private endMission = (id: string | null, cleared: boolean): void => {
+    if (!id) return
+    const m = this.state.missions.find((x) => x.id === id)
+    if (!m) return
+    m.active = false
+    if (cleared) m.clears++
+  }
+
+  // -------------------------------------------------------------------------
+  // 건설 / 합성 / 판매
+  // -------------------------------------------------------------------------
+
+  /** 셀 점유 여부 */
+  private cellOccupied = (cell: Vec2): boolean =>
+    this.state.towers.some((t) => Math.abs(t.pos.x - cell.x) < 1 && Math.abs(t.pos.y - cell.y) < 1)
+
+  /** 클릭 좌표가 건설 가능한지(그리드 스냅 기준) */
+  canPlaceAt = (pos: Vec2): boolean => {
+    const cell = snapToGrid(pos)
+    return isBuildableCell(cell) && !this.cellOccupied(cell)
+  }
+
+  buildCommonTower = (pos: Vec2): boolean => {
+    if (this.state.minerals < BALANCE.towerCost) return this.fail('미네랄이 부족합니다.')
+    const cell = snapToGrid(pos)
+    if (!isBuildableCell(cell)) return this.fail('여기에는 지을 수 없습니다.')
+    if (this.cellOccupied(cell)) return this.fail('이미 타워가 있는 칸입니다.')
+    this.state.minerals -= BALANCE.towerCost
+    const bp = randItem(TOWERS_BY_RARITY.common)
+    this.placeTower(bp, cell)
+    this.state.message = `[일반] ${bp.name}(${RACE_BY_ID[bp.race].short}) 건설!`
+    this.afterChange()
+    return true
+  }
+
+  buildHeroTower = (blueprintId: string, pos: Vec2): boolean => {
+    const bp = TOWERS_BY_ID[blueprintId]
+    if (!bp || bp.rarity !== 'hero') return false
+    if (this.state.terrazine < 1) return this.fail('테라진이 부족합니다.')
+    if (this.state.minerals < BALANCE.heroPickMineralCost) return this.fail('미네랄이 부족합니다.')
+    const cell = snapToGrid(pos)
+    if (!isBuildableCell(cell)) return this.fail('여기에는 지을 수 없습니다.')
+    if (this.cellOccupied(cell)) return this.fail('이미 타워가 있는 칸입니다.')
+    this.state.terrazine -= 1
+    this.state.minerals -= BALANCE.heroPickMineralCost
+    this.placeTower(bp, cell)
+    this.state.message = `[영웅] ${bp.name} 확정 건설!`
+    this.afterChange()
+    return true
+  }
+
+  private placeTower = (bp: TowerBlueprint, pos: Vec2): Tower => {
+    const tower: Tower = { uid: this.nextUid(), blueprint: bp, pos, cooldown: 0, dmgBonusMul: 1 }
+    this.state.towers.push(tower)
+    this.state.selectedTowerUid = tower.uid
+    return tower
+  }
+
+  mergePartner = (uid: number): Tower | null => {
+    const t = this.state.towers.find((x) => x.uid === uid)
+    if (!t || t.blueprint.rarity === 'god') return null
+    return (
+      this.state.towers.find(
+        (x) => x.uid !== uid && x.blueprint.id === t.blueprint.id && x.blueprint.rarity === t.blueprint.rarity,
+      ) ?? null
+    )
+  }
+
+  mergeTower = (uid: number): boolean => {
+    const a = this.state.towers.find((x) => x.uid === uid)
+    if (!a) return false
+    const b = this.mergePartner(uid)
+    if (!b) return this.fail('합성할 같은 종류 타워가 없습니다.')
+    const up = nextRarity(a.blueprint.rarity)
+    if (!up) return this.fail('신 등급은 더 이상 합성할 수 없습니다.')
+    const pos = { ...a.pos }
+    this.state.towers = this.state.towers.filter((x) => x.uid !== a.uid && x.uid !== b.uid)
+    const bp = randItem(TOWERS_BY_RARITY[up])
+    this.placeTower(bp, pos)
+    this.state.message = `합성 성공 → [${RARITY_META[up].label}] ${bp.name}(${RACE_BY_ID[bp.race].short})!`
+    this.afterChange()
+    return true
+  }
+
+  sellTower = (uid: number): void => {
+    const idx = this.state.towers.findIndex((t) => t.uid === uid)
+    if (idx < 0) return
+    this.state.minerals += Math.round(BALANCE.towerCost * BALANCE.sellRatio)
+    this.state.towers.splice(idx, 1)
+    if (this.state.selectedTowerUid === uid) this.state.selectedTowerUid = null
+    this.state.message = '타워 판매 (+50 미네랄).'
+    this.onChange()
+  }
+
+  selectTower = (uid: number | null): void => {
+    this.state.selectedTowerUid = uid
+    this.onChange()
+  }
+
+  // -------------------------------------------------------------------------
+  // 가스 도박 / 업그레이드 / 테라진
+  // -------------------------------------------------------------------------
+
+  gambleGas = (): boolean => {
+    if (this.state.minerals < BALANCE.gasExchangeCost) return this.fail('미네랄이 부족합니다.')
+    this.state.minerals -= BALANCE.gasExchangeCost
+    const steps = (BALANCE.gasGambleMax - BALANCE.gasGambleMin) / BALANCE.gasGambleStep
+    const got = BALANCE.gasGambleMin + Math.floor(Math.random() * (steps + 1)) * BALANCE.gasGambleStep
+    this.state.gas += got
+    this.state.lastGasGamble = got
+    this.state.message = `가스 도박: +${got} 획득!`
+    this.onChange()
+    return true
+  }
+
+  upgradeCost = (race: RaceId): number => BALANCE.upgradeBaseCost + BALANCE.upgradeCostPerLevel * this.state.upgrades[race]
+
+  buyUpgrade = (race: RaceId): void => {
+    const level = this.state.upgrades[race]
+    if (level >= BALANCE.upgradeMaxLevel) return
+    const cost = this.upgradeCost(race)
+    if (this.state.gas < cost) return void this.fail('가스가 부족합니다.')
+    this.state.gas -= cost
+    this.state.upgrades[race] = level + 1
+    this.state.message = `${RACE_BY_ID[race].name} 업그레이드 Lv.${level + 1} (공격력 +${+((level + 1) * BALANCE.upgradeBonusPerLevel * 100).toFixed(1)}%)`
+    this.onChange()
+  }
+
+  terrazineToMinerals = (): void => {
+    if (this.state.terrazine < 1) return
+    this.state.terrazine -= 1
+    this.state.minerals += BALANCE.terrazineToMinerals
+    this.state.message = `테라진 → 미네랄 +${BALANCE.terrazineToMinerals}`
+    this.onChange()
+  }
+
+  terrazineToGas = (): void => {
+    if (this.state.terrazine < 1) return
+    this.state.terrazine -= 1
+    this.state.gas += BALANCE.terrazineToGas
+    this.state.message = `테라진 → 가스 +${BALANCE.terrazineToGas}`
+    this.onChange()
+  }
+
+  // -------------------------------------------------------------------------
+  // 실효 스탯 (업그레이드 + 분신 배율)
+  // -------------------------------------------------------------------------
+
+  effectiveStats = (bp: TowerBlueprint, dmgBonusMul = 1) => {
+    const lv = this.state.upgrades[bp.race]
+    const dmgMul = 1 + lv * BALANCE.upgradeBonusPerLevel // 단리
+    return {
+      damage: bp.damage * dmgMul * dmgBonusMul,
+      attackSpeed: bp.attackSpeed,
+      range: bp.range,
+      splashRadius: bp.splashRadius,
+      bonusVsBoss: bp.bonusVsBoss,
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 퀘스트
+  // -------------------------------------------------------------------------
+
+  private checkQuests = (): void => {
+    const s = this.state
+    const byRarity = (r: string) => s.towers.filter((t) => t.blueprint.rarity === r)
+    const award = (id: string, fn: () => void) => {
+      if (s.questsDone[id]) return
+      s.questsDone[id] = true
+      fn()
+      const q = QUESTS.find((x) => x.id === id)
+      const name = q?.name ?? id
+      const reward = q?.reward ?? ''
+      s.message = `퀘스트 달성! ${name} → ${reward}`
+      this.notify('quest', name, reward)
+    }
+    if (!s.questsDone['collect_common'] && new Set(byRarity('common').map((t) => t.blueprint.id)).size >= 8)
+      award('collect_common', () => (s.minerals += 300))
+    if (byRarity('hero').length >= 7) award('hero7', () => (s.minerals += 300))
+    if (byRarity('legend').length >= 6) award('legend6', () => (s.minerals += 300))
+    if (byRarity('god').length >= 5) award('god5', () => (s.minerals += 500))
+    if (!s.questsDone['tri_god'] && new Set(byRarity('god').map((t) => t.blueprint.race)).size >= 3)
+      award('tri_god', () => (s.terrazine += BALANCE.terrazineTriRaceGod))
+    if (!s.questsDone['kill750'] && s.killCount >= BALANCE.killMilestone)
+      award('kill750', () => (s.terrazine += BALANCE.terrazineKillReward))
+    if (!s.questsDone['time7'] && s.elapsed >= BALANCE.timeQuest7) award('time7', () => (s.minerals += 200))
+    if (!s.questsDone['time12'] && s.elapsed >= BALANCE.timeQuest12) award('time12', () => (s.minerals += 300))
+    if (!s.questsDone['time18'] && s.elapsed >= BALANCE.timeQuest18) award('time18', () => (s.terrazine += 2))
+  }
+
+  // -------------------------------------------------------------------------
+  // 틱 루프
+  // -------------------------------------------------------------------------
+
+  tick = (dt: number): void => {
+    const s = this.state
+    if (s.phase === 'select-difficulty' || s.phase === 'won' || s.phase === 'lost') return
+
+    // 첫 수동 시작 이후부터 시간/카운트다운이 흐른다. (배속이면 dt가 이미 배속 적용됨)
+    if (s.autoStarted) {
+      s.elapsed += dt
+      for (const m of s.missions) if (m.cooldownRemaining > 0) m.cooldownRemaining = Math.max(0, m.cooldownRemaining - dt)
+      // 대기 중 자동 시작 카운트다운
+      if (s.phase === 'building' && s.nextRoundCountdown > 0) {
+        s.nextRoundCountdown = Math.max(0, s.nextRoundCountdown - dt)
+        if (s.nextRoundCountdown <= 0) this.startNextRound()
+      }
+    }
+
+    if (s.phase === 'wave') this.spawnTick(dt)
+
+    // 미션 몹은 건설 페이즈에도 맵을 걷는다 → 적이 있으면 전투 시뮬레이션 수행
+    if (s.phase === 'wave' || s.enemies.length > 0) {
+      this.enemyTick(dt)
+      this.towerTick(dt)
+      this.projectileTick(dt)
+    }
+    if (s.phase === 'wave') this.checkRoundEnd()
+
+    this.checkQuests()
+    this.onChange()
+  }
+
+  private spawnTick = (dt: number): void => {
+    if (this.spawnQueue.length === 0) return
+    this.spawnTimer -= dt
+    if (this.spawnTimer <= 0) {
+      this.state.enemies.push(this.spawnQueue.shift()!)
+      this.spawnTimer = BALANCE.spawnInterval
+    }
+  }
+
+  private enemyTick = (dt: number): void => {
+    const survivors: Enemy[] = []
+    for (const e of this.state.enemies) {
+      // 디버프 타이머
+      if (e.stunTimer > 0) e.stunTimer = Math.max(0, e.stunTimer - dt)
+      if (e.slowTimer > 0) e.slowTimer = Math.max(0, e.slowTimer - dt)
+      const factor = e.stunTimer > 0 ? 0 : e.slowTimer > 0 ? e.slowFactor : 1
+      e.progress += e.speed * factor * dt
+      if (e.progress >= PATH_LENGTH) {
+        if (e.isBoss && !this.state.endless && this.state.round >= BALANCE.totalRounds) {
+          // 최종 50라운드 보스는 막지 못하면 체력과 무관하게 즉시 패배
+          this.state.phase = 'lost'
+          this.state.message = '최종 보스를 막지 못했습니다… 패배!'
+          continue
+        }
+        if (e.isMission) {
+          this.state.life -= BALANCE.lifeLossPerMissionLeak
+          this.endMission(e.missionId, false)
+        } else {
+          this.state.life -= e.isBoss ? BALANCE.lifeLossPerBossLeak : BALANCE.lifeLossPerLeak
+        }
+        continue
+      }
+      e.pos = pointAtDistance(e.progress)
+      survivors.push(e)
+    }
+    this.state.enemies = survivors
+    if (this.state.phase !== 'lost' && this.state.life <= 0) {
+      this.state.life = 0
+      this.state.phase = 'lost'
+      this.state.message = '패배… 목숨이 모두 소진되었습니다.'
+    }
+  }
+
+  private towerTick = (dt: number): void => {
+    for (const t of this.state.towers) {
+      t.cooldown -= dt
+      if (t.cooldown > 0) continue
+      const stats = this.effectiveStats(t.blueprint, t.dmgBonusMul)
+      const target = this.acquireTarget(t.pos, stats.range)
+      if (!target) continue
+      t.cooldown = 1 / stats.attackSpeed
+      // 사도 분신: 발사 시 확률적으로 공격력 누적 증가
+      if (t.blueprint.skill === 'clone' && Math.random() < BALANCE.cloneChance) {
+        t.dmgBonusMul = Math.min(t.dmgBonusMul + 1, 1 + BALANCE.cloneMaxStacks)
+      }
+      this.state.projectiles.push({
+        uid: this.nextUid(),
+        from: { ...t.pos },
+        to: { ...target.pos },
+        targetUid: target.uid,
+        damage: stats.damage,
+        splashRadius: stats.splashRadius,
+        bonusVsBoss: stats.bonusVsBoss,
+        color: t.blueprint.color,
+        skill: t.blueprint.skill,
+        t: 0,
+        speed: 6,
+      })
+    }
+  }
+
+  private acquireTarget = (pos: Vec2, range: number): Enemy | null => {
+    let best: Enemy | null = null
+    for (const e of this.state.enemies) {
+      if (Math.hypot(e.pos.x - pos.x, e.pos.y - pos.y) <= range) {
+        if (!best || e.progress > best.progress) best = e
+      }
+    }
+    return best
+  }
+
+  private projectileTick = (dt: number): void => {
+    const alive: Projectile[] = []
+    for (const p of this.state.projectiles) {
+      p.t += p.speed * dt
+      if (p.t < 1) {
+        const tgt = this.state.enemies.find((e) => e.uid === p.targetUid)
+        if (tgt) p.to = { ...tgt.pos }
+        alive.push(p)
+        continue
+      }
+      this.resolveHit(p)
+    }
+    this.state.projectiles = alive
+  }
+
+  private resolveHit = (p: Projectile): void => {
+    const primary = this.state.enemies.find((e) => e.uid === p.targetUid)
+    const impact = primary ? primary.pos : p.to
+    // 피해 대상 집합 결정
+    let targets: Enemy[]
+    if (p.splashRadius > 0) {
+      targets = this.state.enemies.filter((e) => Math.hypot(e.pos.x - impact.x, e.pos.y - impact.y) <= p.splashRadius)
+    } else if (p.skill === 'multi3') {
+      targets = [...this.state.enemies]
+        .filter((e) => Math.hypot(e.pos.x - impact.x, e.pos.y - impact.y) <= BALANCE.multiRadius)
+        .sort((a, b) => b.progress - a.progress)
+        .slice(0, BALANCE.multiTargets)
+    } else {
+      targets = primary ? [primary] : []
+    }
+    for (const e of targets) {
+      e.hp -= e.isBoss ? p.damage * p.bonusVsBoss : p.damage
+      if (p.skill === 'slow') {
+        e.slowTimer = BALANCE.slowDuration
+        e.slowFactor = BALANCE.slowFactor
+      } else if (p.skill === 'stun' && !e.isBoss) {
+        e.stunTimer = BALANCE.stunDuration
+      }
+    }
+    // 사망 처리
+    const survivors: Enemy[] = []
+    for (const e of this.state.enemies) {
+      if (e.hp <= 0) {
+        this.state.minerals += e.bounty
+        this.state.killCount++
+        if (e.isMission) {
+          this.endMission(e.missionId, true)
+          this.state.message = `개인 미션 클리어! +${e.bounty} 미네랄`
+          this.notify('mission', '개인 미션 클리어', `+${e.bounty} 미네랄`)
+        }
+      } else survivors.push(e)
+    }
+    this.state.enemies = survivors
+    this.checkQuests()
+  }
+
+  private checkRoundEnd = (): void => {
+    if (this.state.phase !== 'wave') return
+    // 라운드 종료는 "해당 라운드 소속(roundBound) 적이 모두 죽었을 때". 대기 중 소환된 미션몹은 무시.
+    if (this.spawnQueue.length > 0 || this.state.enemies.some((e) => e.roundBound)) return
+
+    this.state.minerals += BALANCE.rewardPerRound
+    if (this.isBossRound(this.state.round)) {
+      this.state.terrazine += BALANCE.terrazinePerBoss
+      this.state.message = `보스 처치! 테라진 +${BALANCE.terrazinePerBoss} (+${BALANCE.rewardPerRound} 미네랄)`
+      this.notify('boss', `라운드 ${this.state.round} 보스 처치`, `테라진 +${BALANCE.terrazinePerBoss} · 미네랄 +${BALANCE.rewardPerRound}`)
+    } else {
+      this.state.message = `라운드 ${this.state.round} 클리어! (+${BALANCE.rewardPerRound} 미네랄)`
+    }
+
+    if (!this.state.endless && this.state.round >= BALANCE.totalRounds) {
+      this.state.phase = 'won'
+      this.state.message = '🎉 50라운드 클리어! 무한모드로 계속하거나 종료하세요.'
+    } else {
+      this.state.phase = 'building'
+      this.state.nextRoundCountdown = BALANCE.roundInterval // 자동 시작 카운트다운
+      // 다음이 최종 보스면 미리 경고
+      if (!this.state.endless && this.state.round + 1 === BALANCE.totalRounds) {
+        this.notify('boss', '⚠️ 다음이 최종 보스', '막지 못하면 체력과 무관하게 즉시 패배!')
+      }
+    }
+    this.state.projectiles = []
+    this.checkQuests()
+  }
+
+  /** 50R 클리어 후 무한모드 진입 */
+  continueEndless = (): void => {
+    if (this.state.phase !== 'won') return
+    this.state.endless = true
+    this.state.terrazine += BALANCE.endlessTerrazineGrant
+    this.state.phase = 'building'
+    this.state.nextRoundCountdown = BALANCE.roundInterval
+    this.state.message = `무한모드 시작! 테라진 +${BALANCE.endlessTerrazineGrant}. 51라운드부터 계속됩니다.`
+    this.onChange()
+  }
+
+  // -------------------------------------------------------------------------
+  // 보조 / 조회
+  // -------------------------------------------------------------------------
+
+  private fail = (msg: string): boolean => {
+    this.state.message = msg
+    this.onChange()
+    return false
+  }
+
+  private afterChange = (): void => {
+    this.checkQuests()
+    this.onChange()
+  }
+
+  get selectedTower(): Tower | null {
+    return this.state.towers.find((t) => t.uid === this.state.selectedTowerUid) ?? null
+  }
+
+  questProgress = (id: string): string => {
+    const s = this.state
+    const c = (r: string) => s.towers.filter((t) => t.blueprint.rarity === r).length
+    const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
+    switch (id) {
+      case 'collect_common':
+        return `${new Set(s.towers.filter((t) => t.blueprint.rarity === 'common').map((t) => t.blueprint.id)).size}/8`
+      case 'hero7':
+        return `${c('hero')}/7`
+      case 'legend6':
+        return `${c('legend')}/6`
+      case 'god5':
+        return `${c('god')}/5`
+      case 'tri_god':
+        return `${new Set(s.towers.filter((t) => t.blueprint.rarity === 'god').map((t) => t.blueprint.race)).size}/3`
+      case 'kill750':
+        return `${Math.min(s.killCount, BALANCE.killMilestone)}/${BALANCE.killMilestone}`
+      case 'time7':
+      case 'time12':
+      case 'time18': {
+        const q = QUESTS.find((x) => x.id === id)
+        return q?.timeThreshold ? `${mmss(Math.min(s.elapsed, q.timeThreshold))}/${mmss(q.timeThreshold)}` : ''
+      }
+      default:
+        return ''
+    }
+  }
+
+  reset = (): void => {
+    Object.assign(this.state, this.freshState())
+    this.spawnQueue = []
+    this.onChange()
+  }
+}

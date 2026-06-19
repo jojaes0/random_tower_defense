@@ -1,0 +1,11 @@
+:root {
+  font-family: 'Pretendard', 'Segoe UI', system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #060a14;
+  color: #e2e8f0;
+}
+button { font-family: inherit; }

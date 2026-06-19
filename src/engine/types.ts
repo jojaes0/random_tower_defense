@@ -1,0 +1,153 @@
+// 게임 전역 타입 정의 (실제 RTD 구조 기준)
+
+export type RaceId = 'terran' | 'protoss' | 'zerg'
+
+/** 5등급: 일반 → 희귀 → 영웅 → 전설 → 신 */
+export type Rarity = 'common' | 'rare' | 'hero' | 'legend' | 'god'
+
+/** 타워 성향 — 라인(잡몹) / 보스 / 밸런스 */
+export type Role = 'line' | 'boss' | 'balance'
+
+/** 타워 시그니처 스킬 */
+export type SkillId = 'clone' | 'slow' | 'multi3' | 'stun'
+
+export type GamePhase = 'select-difficulty' | 'building' | 'wave' | 'won' | 'lost'
+
+export interface Vec2 {
+  x: number
+  y: number
+}
+
+/** 난이도 */
+export interface Difficulty {
+  id: string
+  name: string
+  desc: string
+  hpMult: number
+  startLife: number
+  startMineralBonus: number
+  startGasBonus: number
+}
+
+/** 타워 원형(설계도) */
+export interface TowerBlueprint {
+  id: string
+  name: string
+  race: RaceId
+  rarity: Rarity
+  role: Role
+  /** 발당 피해 */
+  damage: number
+  /** 초당 공격 횟수 */
+  attackSpeed: number
+  /** 사거리(px) */
+  range: number
+  /** 범위 반경(px). 0이면 단일 */
+  splashRadius: number
+  /** 보스 추가 피해 배율 */
+  bonusVsBoss: number
+  /** 표시 색(등급색) */
+  color: string
+  /** 캐릭터 아이콘(이모지) */
+  icon: string
+  /** 시그니처 스킬 */
+  skill?: SkillId
+  /** 스킬 설명(UI용) */
+  skillDesc?: string
+}
+
+/** 맵에 배치된 타워 인스턴스 */
+export interface Tower {
+  uid: number
+  blueprint: TowerBlueprint
+  pos: Vec2
+  cooldown: number
+  /** 사도 분신 등으로 누적되는 추가 피해 배율(1=기본) */
+  dmgBonusMul: number
+}
+
+export interface EnemyBlueprint {
+  id: string
+  name: string
+  isBoss: boolean
+  color: string
+  radius: number
+}
+
+export interface Enemy {
+  uid: number
+  blueprint: EnemyBlueprint
+  hp: number
+  maxHp: number
+  speed: number
+  /** 진행 거리(px) */
+  progress: number
+  pos: Vec2
+  isBoss: boolean
+  /** 개인 미션 몹 여부 */
+  isMission: boolean
+  /** 개인 미션 몹이면 미션 id */
+  missionId: string | null
+  /** 이 적이 현재 라운드 종료를 막는가(라운드 중 생성=true, 대기 중 생성된 미션몹=false) */
+  roundBound: boolean
+  bounty: number
+  /** 감속 남은 시간(초)·계수 */
+  slowTimer: number
+  slowFactor: number
+  /** 기절 남은 시간(초) */
+  stunTimer: number
+}
+
+export interface Projectile {
+  uid: number
+  from: Vec2
+  to: Vec2
+  targetUid: number
+  damage: number
+  splashRadius: number
+  bonusVsBoss: number
+  color: string
+  skill?: SkillId
+  t: number
+  speed: number
+}
+
+/** 종족 가스 업그레이드 트리 */
+export interface Race {
+  id: RaceId
+  name: string
+  short: string // T/P/Z
+  color: string
+  tagline: string
+}
+
+/** 퀘스트 정의 */
+export interface Quest {
+  id: string
+  name: string
+  desc: string
+  reward: string
+  /** 시간 경과형 퀘스트면 임계 초 */
+  timeThreshold?: number
+}
+
+/** 개인 미션 정의 */
+export interface PersonalMissionDef {
+  id: string
+  key: string // 단축키 표기
+  name: string
+  /** 기본 체력(나무위키 절대값) — 난이도 배율이 곱해진다 */
+  hp: number
+  reward: number
+  cooldown: number
+}
+
+/** 런타임 개인 미션 상태 */
+export interface PersonalMission extends PersonalMissionDef {
+  cooldownRemaining: number
+  active: boolean
+  clears: number
+}
+
+/** 종족별 업그레이드 레벨 (raceId -> level) */
+export type UpgradeLevels = Record<RaceId, number>
