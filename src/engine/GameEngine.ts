@@ -550,11 +550,19 @@ export class GameEngine {
       const stats = this.effectiveStats(t.blueprint, t.dmgBonusMul)
       const hits = t.blueprint.hits
       const targets = this.acquireTargets(t.pos, stats.range, hits)
-      if (targets.length === 0) continue
+      if (targets.length === 0) {
+        // 충전형(모한다르): 사거리에 적이 없으면 충전 초기화
+        if (t.blueprint.skill === 'charge') t.dmgBonusMul = 1
+        continue
+      }
       t.cooldown = 1 / stats.attackSpeed
-      // 사도 분신(현 로스터엔 없음): 발사 시 확률적으로 공격력 누적 증가
+      // 사도 분신: 발사 시 확률적으로 공격력 누적 증가
       if (t.blueprint.skill === 'clone' && Math.random() < BALANCE.cloneChance) {
         t.dmgBonusMul = Math.min(t.dmgBonusMul + 1, 1 + BALANCE.cloneMaxStacks)
+      }
+      // 충전(모한다르 3단 충전): 연속 공격마다 피해 배율 증가(다음 발사부터 반영)
+      if (t.blueprint.skill === 'charge') {
+        t.dmgBonusMul = Math.min(t.dmgBonusMul + BALANCE.chargeStepMul, BALANCE.chargeMaxMul)
       }
       // 주기당 hits발 발사 — 대상이 부족하면 앞선 적에게 중복 타격
       const melee = t.blueprint.melee
@@ -571,6 +579,7 @@ export class GameEngine {
           bonusVsBoss: stats.bonusVsBoss,
           color: t.blueprint.color,
           skill: t.blueprint.skill,
+          skillChance: t.blueprint.skillChance,
           melee,
           rank,
           t: 0,
@@ -606,11 +615,15 @@ export class GameEngine {
     const primary = this.state.enemies.find((e) => e.uid === p.targetUid)
     const impact = primary ? primary.pos : p.to
     this.addImpact(p, impact.x, impact.y)
+    // 스킬 발동 판정(확률형). 발동 시에만 다중타격/감속/기절 적용
+    const proc = p.skill ? Math.random() < (p.skillChance ?? 1) : false
     // 피해 대상 집합 결정
     let targets: Enemy[]
     if (p.splashRadius > 0) {
+      // 평타 자체가 광역(splash). 감속/기절은 발동 시 splash 대상 전체에 적용
       targets = this.state.enemies.filter((e) => Math.hypot(e.pos.x - impact.x, e.pos.y - impact.y) <= p.splashRadius)
-    } else if (p.skill === 'multi3') {
+    } else if (p.skill === 'multi3' && proc) {
+      // 확률 다중타격: 주변 진행도 상위 적들 동시 타격
       targets = [...this.state.enemies]
         .filter((e) => Math.hypot(e.pos.x - impact.x, e.pos.y - impact.y) <= BALANCE.multiRadius)
         .sort((a, b) => b.progress - a.progress)
@@ -620,10 +633,10 @@ export class GameEngine {
     }
     for (const e of targets) {
       e.hp -= e.isBoss ? p.damage * p.bonusVsBoss : p.damage
-      if (p.skill === 'slow') {
+      if (proc && p.skill === 'slow') {
         e.slowTimer = BALANCE.slowDuration
         e.slowFactor = BALANCE.slowFactor
-      } else if (p.skill === 'stun' && !e.isBoss) {
+      } else if (proc && p.skill === 'stun' && !e.isBoss) {
         e.stunTimer = BALANCE.stunDuration
       }
     }

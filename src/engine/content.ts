@@ -53,6 +53,8 @@ interface TowerDef {
   /** 범위 공격 반경(px). 없거나 0이면 단일. 유닛 특징 + 등급대비 DPS 고려해 임의 튜닝(나무위키 수치 없음) */
   splash?: number
   skill?: SkillId
+  /** 스킬 발동 확률(0~1). 미지정 시 1 */
+  skillChance?: number
   skillDesc?: string
 }
 
@@ -82,39 +84,39 @@ const DEFS: TowerDef[] = [
   { id: 'roach', name: '바퀴', race: 'zerg', rarity: 'rare', role: 'balance', dps: 115, hits: 1, interval: 1.6, rangeUnit: 6 },
   { id: 'hydralisk', name: '히드라리스크', race: 'zerg', rarity: 'rare', role: 'balance', dps: 55, hits: 1, interval: 0.83, rangeUnit: 7.2 },
 
-  // ── 영웅(hero) 8 ────────────────────────────────────────────────
-  { id: 'goliath', name: '골리앗', race: 'terran', rarity: 'hero', role: 'balance', dps: 156, hits: 2, interval: 3, rangeUnit: 9 },
-  { id: 'thor', name: '토르', race: 'terran', rarity: 'hero', role: 'boss', dps: 137, hits: 2, interval: 1.1, rangeUnit: 7.2 },
-  { id: 'ascendant', name: '승천자', race: 'protoss', rarity: 'hero', role: 'boss', dps: 208, hits: 1, interval: 1.6, rangeUnit: 7.2 },
-  { id: 'executor', name: '젤나가 집행자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 273, hits: 1, interval: 1.45, rangeUnit: 7.2, splash: 38 },
-  { id: 'reaver', name: '파괴자', race: 'protoss', rarity: 'hero', role: 'line', dps: 247, hits: 1, interval: 1.8, rangeUnit: 7.2, splash: 50 },
-  { id: 'swarm_host', name: '군단 숙주', race: 'zerg', rarity: 'hero', role: 'line', dps: 52, hits: 1, interval: 2.5, rangeUnit: 7.2, splash: 62 },
-  { id: 'queen', name: '여왕', race: 'zerg', rarity: 'hero', role: 'balance', dps: 364, hits: 1, interval: 1.5, rangeUnit: 9 },
-  { id: 'primal_igniter', name: '원시 점화자', race: 'zerg', rarity: 'hero', role: 'line', dps: 195, hits: 1, interval: 1, rangeUnit: 6, splash: 58 },
+  // ── 영웅(hero) 8 ── (뉴 랜타디 23: 영웅부터 고유 스킬 보유)
+  { id: 'goliath', name: '골리앗', race: 'terran', rarity: 'hero', role: 'balance', dps: 156, hits: 2, interval: 3, rangeUnit: 9, skillDesc: '기관포+미사일 동시 발사(2연사)' },
+  { id: 'thor', name: '토르', race: 'terran', rarity: 'hero', role: 'boss', dps: 137, hits: 2, interval: 1.1, rangeUnit: 7.2, skill: 'slow', skillChance: 0.4, skillDesc: '250mm 타격포 — 단일 대상 50% 감속' },
+  { id: 'ascendant', name: '승천자', race: 'protoss', rarity: 'hero', role: 'boss', dps: 208, hits: 1, interval: 1.6, rangeUnit: 7.2, skillDesc: '정신 폭발 — 강력한 단일 공격' },
+  { id: 'executor', name: '젤나가 집행자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 273, hits: 1, interval: 1.45, rangeUnit: 7.2, splash: 38, skill: 'stun', skillChance: 0.25, skillDesc: '확률적 좁은 범위 기절' },
+  { id: 'reaver', name: '파괴자', race: 'protoss', rarity: 'hero', role: 'line', dps: 247, hits: 1, interval: 1.8, rangeUnit: 7.2, skill: 'multi3', skillChance: 0.4, skillDesc: '확률적 갑충탄 다중 타격' },
+  { id: 'swarm_host', name: '군단 숙주', race: 'zerg', rarity: 'hero', role: 'line', dps: 52, hits: 1, interval: 2.5, rangeUnit: 7.2, skill: 'multi3', skillChance: 0.6, skillDesc: '식충 — 여러 적 동시 공격' },
+  { id: 'queen', name: '여왕', race: 'zerg', rarity: 'hero', role: 'balance', dps: 364, hits: 1, interval: 1.5, rangeUnit: 9, splash: 50, skill: 'slow', skillChance: 0.3, skillDesc: '인스네어 — 범위 확률 감속' },
+  { id: 'primal_igniter', name: '원시 점화자', race: 'zerg', rarity: 'hero', role: 'line', dps: 195, hits: 1, interval: 1, rangeUnit: 6, splash: 58, skillDesc: '화염방사 — 범위 공격' },
 
   // ── 전설(legend) 8 ──────────────────────────────────────────────
-  { id: 'valerius', name: '발리우스', race: 'terran', rarity: 'legend', role: 'line', dps: 527, hits: 1, interval: 1, rangeUnit: 7.2, splash: 48 },
-  { id: 'warfield', name: '워필드', race: 'terran', rarity: 'legend', role: 'line', dps: 585, hits: 1, interval: 1.04, rangeUnit: 7.2, splash: 42 },
-  { id: 'mojo', name: '모조', race: 'protoss', rarity: 'legend', role: 'boss', dps: 1200, hits: 1, interval: 1.2, rangeUnit: 7.2 },
-  { id: 'mohandar', name: '모한다르', race: 'protoss', rarity: 'legend', role: 'boss', dps: 128, hits: 1, interval: 1, rangeUnit: 11 },
-  { id: 'urun', name: '우룬', race: 'protoss', rarity: 'legend', role: 'line', dps: 273, hits: 2, interval: 0.8, rangeUnit: 7.2, splash: 54 },
-  { id: 'zagara', name: '자가라', race: 'zerg', rarity: 'legend', role: 'line', dps: 292, hits: 1, interval: 1.35, rangeUnit: 7, splash: 50 },
-  { id: 'torrasque', name: '토라스크', race: 'zerg', rarity: 'legend', role: 'line', dps: 325, hits: 1, interval: 0.5, rangeUnit: 7, splash: 54 },
-  { id: 'mecha_ravager', name: '메카 궤멸충', race: 'terran', races: ['terran', 'zerg'], rarity: 'legend', role: 'line', dps: 858, hits: 1, interval: 1.3, rangeUnit: 7.2, splash: 48 },
+  { id: 'valerius', name: '발리우스', race: 'terran', rarity: 'legend', role: 'line', dps: 527, hits: 1, interval: 1, rangeUnit: 7.2, splash: 48, skillDesc: '일직선 포격 — 범위 피해' },
+  { id: 'warfield', name: '워필드', race: 'terran', rarity: 'legend', role: 'line', dps: 585, hits: 1, interval: 1.04, rangeUnit: 7.2, splash: 42, skillDesc: '십자 모양 좁은 범위 피해' },
+  { id: 'mojo', name: '모조', race: 'protoss', rarity: 'legend', role: 'boss', dps: 1200, hits: 1, interval: 1.2, rangeUnit: 7.2, skillDesc: '스킬 없음 — 높은 단일 DPS' },
+  { id: 'mohandar', name: '모한다르', race: 'protoss', rarity: 'legend', role: 'boss', dps: 128, hits: 1, interval: 1, rangeUnit: 11, skill: 'charge', skillDesc: '3단 충전(공허 포격기) — 연속 공격 시 피해 증가' },
+  { id: 'urun', name: '우룬', race: 'protoss', rarity: 'legend', role: 'line', dps: 273, hits: 2, interval: 0.8, rangeUnit: 7.2, splash: 54, skillDesc: '과부하 — 주변 범위 난사' },
+  { id: 'zagara', name: '자가라', race: 'zerg', rarity: 'legend', role: 'line', dps: 292, hits: 1, interval: 1.35, rangeUnit: 7, splash: 50, skillDesc: '맹독충 투하 — 방사 피해' },
+  { id: 'torrasque', name: '토라스크', race: 'zerg', rarity: 'legend', role: 'line', dps: 325, hits: 1, interval: 0.5, rangeUnit: 7, splash: 54, skillDesc: '기본 공격이 범위 피해' },
+  { id: 'mecha_ravager', name: '메카 궤멸충', race: 'terran', races: ['terran', 'zerg'], rarity: 'legend', role: 'line', dps: 858, hits: 1, interval: 1.3, rangeUnit: 7.2, skill: 'multi3', skillChance: 1, skillDesc: '담즙 난사 — 여러 개체 타격' },
 
-  // ── 신(god) 12 ──────────────────────────────────────────────────
-  { id: 'sam', name: '사기꾼 샘', race: 'terran', rarity: 'god', role: 'line', dps: 1650, hits: 2, interval: 0.88, rangeUnit: 7.2, splash: 56 },
-  { id: 'tauren_marine', name: '타우렌 우주 해병', race: 'terran', rarity: 'god', role: 'line', dps: 1900, hits: 1, interval: 0.6, rangeUnit: 7.2, splash: 44 },
-  { id: 'duke', name: '듀크', race: 'terran', rarity: 'god', role: 'balance', dps: 2300, hits: 1, interval: 1, rangeUnit: 10, splash: 52 },
-  { id: 'rasagal', name: '라자갈', race: 'protoss', rarity: 'god', role: 'balance', dps: 1250, hits: 1, interval: 0.27, rangeUnit: 7.2, splash: 44 },
-  { id: 'malash', name: '말라쉬', race: 'protoss', rarity: 'god', role: 'balance', dps: 2400, hits: 1, interval: 0.7, rangeUnit: 7.2 },
-  { id: 'vorazun', name: '보라준', race: 'protoss', rarity: 'god', role: 'line', dps: 1550, hits: 1, interval: 0.95, rangeUnit: 7.2, splash: 54 },
-  { id: 'impaler', name: '추적 도살자', race: 'zerg', rarity: 'god', role: 'balance', dps: 2700, hits: 1, interval: 0.7, rangeUnit: 7.2, splash: 38 },
-  { id: 'sliven', name: '슬리반', race: 'zerg', rarity: 'god', role: 'line', dps: 1000, hits: 1, interval: 1.35, rangeUnit: 7.2, splash: 62 },
-  { id: 'mobius_hybrid', name: '뫼비우스 혼종', race: 'terran', races: ['terran', 'protoss', 'zerg'], rarity: 'god', role: 'balance', dps: 1400, hits: 1, interval: 1.25, rangeUnit: 10, splash: 50 },
-  { id: 'raynor', name: '레이너', race: 'terran', rarity: 'god', role: 'balance', dps: 3800, hits: 1, interval: 0.6, rangeUnit: 7.2 },
-  { id: 'zeratul', name: '제라툴', race: 'protoss', rarity: 'god', role: 'balance', dps: 2650, hits: 1, interval: 0.95, rangeUnit: 7.2, splash: 42 },
-  { id: 'kukulza', name: '쿠쿨자', race: 'zerg', rarity: 'god', role: 'line', dps: 3500, hits: 1, interval: 1, rangeUnit: 7.2, splash: 40 },
+  // ── 신(god) 12 ── (뉴 랜타디 23 기준 고유 스킬)
+  { id: 'sam', name: '사기꾼 샘', race: 'terran', rarity: 'god', role: 'line', dps: 1650, hits: 2, interval: 0.88, rangeUnit: 7.2, splash: 56, skillDesc: '원격 폭탄 — 광역 난사(2연사)' },
+  { id: 'tauren_marine', name: '타우렌 우주 해병', race: 'terran', rarity: 'god', role: 'line', dps: 1900, hits: 1, interval: 0.6, rangeUnit: 7.2, splash: 44, skill: 'slow', skillChance: 0.4, skillDesc: '충격파 — 일직선 감속' },
+  { id: 'duke', name: '듀크', race: 'terran', rarity: 'god', role: 'balance', dps: 2300, hits: 1, interval: 1, rangeUnit: 10, splash: 52, skillDesc: '공성 — 광역 + 최상위 사거리' },
+  { id: 'rasagal', name: '라자갈', race: 'protoss', rarity: 'god', role: 'balance', dps: 1250, hits: 1, interval: 0.27, rangeUnit: 7.2, splash: 44, skill: 'slow', skillChance: 0.5, skillDesc: '분열망 — 범위 약화/감속' },
+  { id: 'malash', name: '말라쉬', race: 'protoss', rarity: 'god', role: 'balance', dps: 2400, hits: 1, interval: 0.7, rangeUnit: 7.2, splash: 50, skill: 'slow', skillChance: 0.15, skillDesc: '파괴의 숨결 — 범위 감속' },
+  { id: 'vorazun', name: '보라준', race: 'protoss', rarity: 'god', role: 'line', dps: 1550, hits: 1, interval: 0.95, rangeUnit: 7.2, skill: 'multi3', skillChance: 0.5, skillDesc: '그림자 격노 — 여러 대상 연속 공격' },
+  { id: 'impaler', name: '추적 도살자', race: 'zerg', rarity: 'god', role: 'balance', dps: 2700, hits: 1, interval: 0.7, rangeUnit: 7.2, skill: 'multi3', skillChance: 0.33, skillDesc: '33% 확률 주변 3마리 타격' },
+  { id: 'sliven', name: '슬리반', race: 'zerg', rarity: 'god', role: 'line', dps: 1000, hits: 1, interval: 1.35, rangeUnit: 7.2, splash: 62, skillDesc: '산성 포자 — 광역(궤멸충 상위호환)' },
+  { id: 'mobius_hybrid', name: '뫼비우스 혼종', race: 'terran', races: ['terran', 'protoss', 'zerg'], rarity: 'god', role: 'balance', dps: 1400, hits: 1, interval: 1.25, rangeUnit: 10, splash: 50, skill: 'slow', skillChance: 1, skillDesc: '십자 폭발 + 이속 감소' },
+  { id: 'raynor', name: '레이너', race: 'terran', rarity: 'god', role: 'balance', dps: 3800, hits: 1, interval: 0.6, rangeUnit: 7.2, skillDesc: '스킬 없음 — 순수 깡딜' },
+  { id: 'zeratul', name: '제라툴', race: 'protoss', rarity: 'god', role: 'balance', dps: 2650, hits: 1, interval: 0.95, rangeUnit: 7.2, skill: 'multi3', skillChance: 0.25, skillDesc: '가르기 — 25% 확률 반원 광역' },
+  { id: 'kukulza', name: '쿠쿨자', race: 'zerg', rarity: 'god', role: 'line', dps: 3500, hits: 1, interval: 1, rangeUnit: 7.2, skill: 'multi3', skillChance: 1, skillDesc: '쐐기 벌레 — 최대 3마리 튕김' },
 ]
 
 // 타워별 캐릭터 아이콘 — 무슨 유닛인지 한눈에 구분
@@ -151,6 +153,7 @@ const buildBlueprint = (d: TowerDef): TowerBlueprint => ({
   icon: ICONS[d.id] ?? '⬢',
   melee: d.rangeUnit <= 5, // 사거리 작은 유닛 = 근접
   skill: d.skill,
+  skillChance: d.skillChance,
   skillDesc: d.skillDesc,
 })
 

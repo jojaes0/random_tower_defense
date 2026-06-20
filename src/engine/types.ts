@@ -9,7 +9,7 @@ export type Rarity = 'common' | 'rare' | 'hero' | 'legend' | 'god'
 export type Role = 'line' | 'boss' | 'balance'
 
 /** 타워 시그니처 스킬 */
-export type SkillId = 'clone' | 'slow' | 'multi3' | 'stun'
+export type SkillId = 'clone' | 'slow' | 'multi3' | 'stun' | 'charge'
 
 export type GamePhase = 'select-difficulty' | 'building' | 'wave' | 'won' | 'lost'
 
@@ -59,6 +59,8 @@ export interface TowerBlueprint {
   melee: boolean
   /** 시그니처 스킬 */
   skill?: SkillId
+  /** 스킬 발동 확률(0~1). 미지정 시 1(상시 발동) */
+  skillChance?: number
   /** 스킬 설명(UI용) */
   skillDesc?: string
 }
@@ -115,6 +117,7 @@ export interface Projectile {
   bonusVsBoss: number
   color: string
   skill?: SkillId
+  skillChance?: number
   /** 근접 공격(슬래시) 여부 */
   melee: boolean
   /** 등급 랭크(0=일반 … 4=신) — 화려함 스케일 */

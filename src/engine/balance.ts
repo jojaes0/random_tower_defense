@@ -58,6 +58,8 @@ export const BALANCE = {
   stunDuration: 0.8, // 기절 지속(초)
   multiTargets: 3, // 다단히트 대상 수
   multiRadius: 80, // 다단히트 탐색 반경(px)
+  chargeMaxMul: 3, // 충전(모한다르 3단 충전) 최대 피해 배율
+  chargeStepMul: 1, // 연속 공격 시 배율 증가량(1→2→3)
 
   // 시간 경과 퀘스트(초)
   timeQuest7: 7 * 60,
