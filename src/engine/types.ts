@@ -63,6 +63,17 @@ export interface TowerBlueprint {
   skillChance?: number
   /** 스킬 설명(UI용) */
   skillDesc?: string
+  /** 보조 무기(예: 골리앗 미사일) — 본 무기와 별개 쿨다운·사거리·위력으로 동시 운용 */
+  secondary?: SecondaryWeapon
+}
+
+/** 보조 무기 — 독립적으로 발사되는 두 번째 무기 */
+export interface SecondaryWeapon {
+  damage: number
+  attackSpeed: number
+  range: number
+  splashRadius: number
+  bonusVsBoss: number
 }
 
 /** 맵에 배치된 타워 인스턴스 */
@@ -71,6 +82,8 @@ export interface Tower {
   blueprint: TowerBlueprint
   pos: Vec2
   cooldown: number
+  /** 보조 무기(secondary) 독립 쿨다운 */
+  cooldown2: number
   /** 사도 분신 등으로 누적되는 추가 피해 배율(1=기본) */
   dmgBonusMul: number
 }
@@ -120,6 +133,8 @@ export interface Projectile {
   skillChance?: number
   /** 근접 공격(슬래시) 여부 */
   melee: boolean
+  /** 미사일(보조 무기) 여부 — 렌더 구분 */
+  missile?: boolean
   /** 등급 랭크(0=일반 … 4=신) — 화려함 스케일 */
   rank: number
   t: number

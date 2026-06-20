@@ -320,7 +320,7 @@ export class GameEngine {
   }
 
   private placeTower = (bp: TowerBlueprint, pos: Vec2): Tower => {
-    const tower: Tower = { uid: this.nextUid(), blueprint: bp, pos, cooldown: 0, dmgBonusMul: 1 }
+    const tower: Tower = { uid: this.nextUid(), blueprint: bp, pos, cooldown: 0, cooldown2: 0, dmgBonusMul: 1 }
     this.state.towers.push(tower)
     // 설치·합성 시 자동 선택(정보 표시)하지 않음 — 사용자가 직접 탭해야 정보가 뜬다
     return tower
@@ -545,6 +545,8 @@ export class GameEngine {
 
   private towerTick = (dt: number): void => {
     for (const t of this.state.towers) {
+      // 보조 무기(골리앗 미사일 등): 본 무기와 독립적으로 발사
+      if (t.blueprint.secondary) this.fireSecondary(t, dt)
       t.cooldown -= dt
       if (t.cooldown > 0) continue
       const stats = this.effectiveStats(t.blueprint, t.dmgBonusMul)
@@ -587,6 +589,34 @@ export class GameEngine {
         })
       }
     }
+  }
+
+  /** 보조 무기 발사(본 무기와 독립 쿨다운). 골리앗 미사일: 강력·장거리·저속. */
+  private fireSecondary = (t: Tower, dt: number): void => {
+    const sec = t.blueprint.secondary!
+    t.cooldown2 -= dt
+    if (t.cooldown2 > 0) return
+    const targets = this.acquireTargets(t.pos, sec.range, 1)
+    if (targets.length === 0) return
+    t.cooldown2 = 1 / sec.attackSpeed
+    const lv = t.blueprint.races.reduce((sum, r) => sum + this.state.upgrades[r], 0)
+    const damage = sec.damage * (1 + lv * BALANCE.upgradeBonusPerLevel) * t.dmgBonusMul
+    const target = targets[0]
+    this.state.projectiles.push({
+      uid: this.nextUid(),
+      from: { ...t.pos },
+      to: { ...target.pos },
+      targetUid: target.uid,
+      damage,
+      splashRadius: sec.splashRadius,
+      bonusVsBoss: sec.bonusVsBoss,
+      color: t.blueprint.color,
+      melee: false,
+      missile: true,
+      rank: RARITY_ORDER.indexOf(t.blueprint.rarity),
+      t: 0,
+      speed: 4, // 미사일은 다소 느린 투사체
+    })
   }
 
   /** 사거리 내 진행도 높은 순으로 최대 n마리 */

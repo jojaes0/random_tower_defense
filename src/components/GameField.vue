@@ -338,13 +338,37 @@ const draw = () => {
     }
   }
 
-  // 발사체 — 근접은 생략(즉시 슬래시), 원거리는 등급별 글로우 오브
+  // 발사체 — 근접은 생략(즉시 슬래시), 원거리는 등급별 글로우 오브, 미사일은 꼬리+큰 탄두
   for (const p of s.projectiles) {
     if (p.melee) continue
     const x = p.from.x + (p.to.x - p.from.x) * p.t
     const y = p.from.y + (p.to.y - p.from.y) * p.t
-    const sz = 2.4 + p.rank * 0.8
     ctx.save()
+    if (p.missile) {
+      // 미사일: 진행 방향 꼬리 + 큰 탄두(강력함 강조)
+      const dx = p.to.x - p.from.x
+      const dy = p.to.y - p.from.y
+      const len = Math.hypot(dx, dy) || 1
+      const tx = x - (dx / len) * 12
+      const ty = y - (dy / len) * 12
+      ctx.strokeStyle = '#fde68a'
+      ctx.globalAlpha = 0.6
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(tx, ty)
+      ctx.lineTo(x, y)
+      ctx.stroke()
+      ctx.globalAlpha = 1
+      ctx.shadowColor = '#f59e0b'
+      ctx.shadowBlur = 8
+      ctx.fillStyle = '#fbbf24'
+      ctx.beginPath()
+      ctx.arc(x, y, 4.5, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+      continue
+    }
+    const sz = 2.4 + p.rank * 0.8
     ctx.shadowColor = p.color
     ctx.shadowBlur = 2 + p.rank * 2.5
     ctx.fillStyle = p.color

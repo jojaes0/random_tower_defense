@@ -56,6 +56,8 @@ interface TowerDef {
   /** 스킬 발동 확률(0~1). 미지정 시 1 */
   skillChance?: number
   skillDesc?: string
+  /** 보조 무기(예: 골리앗 미사일) — 본 무기와 동시 운용, 독립 스탯 */
+  secondary?: { dps: number; interval: number; rangeUnit: number; splash?: number }
 }
 
 // role → 보스 추가피해(라인=대보스 약함, 보스=특화). 계수만 임의.
@@ -85,7 +87,9 @@ const DEFS: TowerDef[] = [
   { id: 'hydralisk', name: '히드라리스크', race: 'zerg', rarity: 'rare', role: 'balance', dps: 55, hits: 1, interval: 0.83, rangeUnit: 7.2 },
 
   // ── 영웅(hero) 8 ── (뉴 랜타디 23: 영웅부터 고유 스킬 보유)
-  { id: 'goliath', name: '골리앗', race: 'terran', rarity: 'hero', role: 'balance', dps: 156, hits: 2, interval: 3, rangeUnit: 9, skillDesc: '기관포+미사일 동시 발사(2연사)' },
+  // 골리앗: 기관포(본 무기, 보통 사거리·위력·빠른 공속) + 미사일(보조, 강한 위력·긴 사거리·느린 공속) 동시 운용.
+  // 총 DPS ≈ 156(기관포 96 + 미사일 60)으로 인게임 표기치 유지.
+  { id: 'goliath', name: '골리앗', race: 'terran', rarity: 'hero', role: 'balance', dps: 96, hits: 1, interval: 0.6, rangeUnit: 9, skillDesc: '기관포(연사) + 미사일(강력·장거리·저속) 동시 운용', secondary: { dps: 60, interval: 3, rangeUnit: 12 } },
   { id: 'thor', name: '토르', race: 'terran', rarity: 'hero', role: 'boss', dps: 137, hits: 2, interval: 1.1, rangeUnit: 7.2, skill: 'slow', skillChance: 0.4, skillDesc: '250mm 타격포 — 단일 대상 50% 감속' },
   { id: 'ascendant', name: '승천자', race: 'protoss', rarity: 'hero', role: 'boss', dps: 208, hits: 1, interval: 1.6, rangeUnit: 7.2, skillDesc: '정신 폭발 — 강력한 단일 공격' },
   { id: 'executor', name: '젤나가 집행자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 273, hits: 1, interval: 1.45, rangeUnit: 7.2, splash: 38, skill: 'stun', skillChance: 0.25, skillDesc: '확률적 좁은 범위 기절' },
@@ -155,6 +159,13 @@ const buildBlueprint = (d: TowerDef): TowerBlueprint => ({
   skill: d.skill,
   skillChance: d.skillChance,
   skillDesc: d.skillDesc,
+  secondary: d.secondary && {
+    damage: Math.round(d.secondary.dps * d.secondary.interval),
+    attackSpeed: 1 / d.secondary.interval,
+    range: Math.round(d.secondary.rangeUnit * RANGE_SCALE),
+    splashRadius: d.secondary.splash ?? 0,
+    bonusVsBoss: roleBoss[d.role],
+  },
 })
 
 export const ALL_TOWERS: TowerBlueprint[] = DEFS.map(buildBlueprint)
