@@ -8,4 +8,4 @@ body {
   background: #060a14;
   color: #e2e8f0;
 }
-button { font-family: inherit; }
+button { font-family: inherit; touch-action: manipulation; } /* 더블탭 줌 방지 */

@@ -124,19 +124,9 @@ const menuAlert = computed(() => {
       </div>
     </TransitionGroup>
 
-    <!-- 상단바 (오버레이) : 좌측=메뉴+스탯 / 우측=배속+시작 -->
+    <!-- 상단바 (오버레이) : 메뉴 / 배속 / 시작 -->
     <header class="topbar">
-      <div class="bar-left">
-        <button class="menu-btn" :class="{ alert: menuAlert }" @click="showMenu = !showMenu">☰</button>
-        <div class="stats">
-          <div class="chip"><span>R</span><b>{{ roundLabel }}</b></div>
-          <div class="chip life"><span>♥</span><b>{{ state.life }}</b></div>
-          <div class="chip mineral"><span>미네랄</span><b>{{ state.minerals }}</b></div>
-          <div class="chip gas"><span>가스</span><b>{{ state.gas }}</b></div>
-          <div class="chip terra"><span>◆</span><b>{{ state.terrazine }}</b></div>
-          <div class="chip time"><span>⏱</span><b>{{ mmss(state.elapsed) }}</b></div>
-        </div>
-      </div>
+      <button class="menu-btn" :class="{ alert: menuAlert }" @click="showMenu = !showMenu">☰</button>
       <div class="bar-right">
         <div class="speed">
           <button :class="{ on: speed === 0 }" @click="togglePause">⏸</button>
@@ -147,6 +137,17 @@ const menuAlert = computed(() => {
         <button class="start" :disabled="!canStart" @click="start">{{ state.phase === 'wave' ? '진행중' : nextRoundLabel }}</button>
       </div>
     </header>
+
+    <!-- 자원 스탯 (별도 줄, 순서: 미네랄·가스·체력) -->
+    <div class="statbar">
+      <div class="chip mineral"><span>미네랄</span><b>{{ state.minerals }}</b></div>
+      <div class="chip gas"><span>가스</span><b>{{ state.gas }}</b></div>
+      <div class="chip life"><span>♥</span><b>{{ state.life }}</b></div>
+      <div class="chip terra"><span>◆</span><b>{{ state.terrazine }}</b></div>
+      <div class="chip"><span>R</span><b>{{ roundLabel }}</b></div>
+      <div class="chip kill"><span>킬</span><b>{{ state.killCount }}</b></div>
+      <div class="chip time"><span>⏱</span><b>{{ mmss(state.elapsed) }}</b></div>
+    </div>
 
     <!-- 메시지 + 다음 라운드 미리보기 (오버레이) -->
     <div class="msgbar">
@@ -271,7 +272,7 @@ const menuAlert = computed(() => {
 @keyframes lifeup { 0% { opacity: 0; transform: translateY(12px) scale(0.8); } 15% { opacity: 1; transform: translateY(0) scale(1.15); } 100% { opacity: 0; transform: translateY(-34px); } }
 
 /* 토스트 */
-.toasts { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); z-index: 40; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: max-content; max-width: 92vw; }
+.toasts { position: fixed; top: 108px; left: 50%; transform: translateX(-50%); z-index: 40; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: max-content; max-width: 92vw; }
 .toast { min-width: 230px; max-width: 92vw; padding: 10px 16px; border-radius: 10px; border: 1px solid; background: rgba(14, 22, 38, 0.95); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); text-align: center; }
 .toast.quest { border-color: #fbbf24; }
 .toast.boss { border-color: #ef4444; }
@@ -288,13 +289,13 @@ const menuAlert = computed(() => {
 .toast-move { transition: transform 0.3s ease; }
 
 /* 상단바 오버레이 */
-.topbar { position: absolute; top: 0; left: 0; right: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; background: linear-gradient(#0b1220ee, #0b122099); }
-.bar-left { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.topbar { position: absolute; top: 0; left: 0; right: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; }
 .bar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.menu-btn { position: relative; width: 36px; height: 32px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 7px; color: #e2e8f0; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+.menu-btn { position: relative; width: 36px; height: 32px; background: rgba(11, 18, 32, 0.92); border: 1px solid #1f2d45; border-radius: 7px; color: #e2e8f0; font-size: 16px; cursor: pointer; flex-shrink: 0; }
 .menu-btn.alert::after { content: ''; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; background: #22c55e; border-radius: 50%; }
-.stats { display: flex; gap: 5px; overflow-x: auto; min-width: 0; }
-.chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: rgba(11, 18, 32, 0.9); border-radius: 7px; border: 1px solid #1f2d45; white-space: nowrap; }
+/* 자원 스탯 줄 */
+.statbar { position: absolute; top: 44px; left: 8px; right: 8px; z-index: 9; display: flex; gap: 5px; overflow-x: auto; }
+.chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: rgba(11, 18, 32, 0.92); border-radius: 7px; border: 1px solid #1f2d45; white-space: nowrap; flex-shrink: 0; }
 .chip span { font-size: 10px; color: #8aa0c0; }
 .chip b { font-size: 13px; }
 .chip.life b { color: #ef4444; }
@@ -308,7 +309,7 @@ const menuAlert = computed(() => {
 .start:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
 
 /* 메시지/미리보기 오버레이 */
-.msgbar { position: absolute; top: 46px; left: 8px; right: 8px; z-index: 9; display: flex; gap: 8px; align-items: center; pointer-events: none; flex-wrap: wrap; }
+.msgbar { position: absolute; top: 78px; left: 8px; right: 8px; z-index: 8; display: flex; gap: 8px; align-items: center; pointer-events: none; flex-wrap: wrap; }
 .message { color: #93c5fd; font-size: 12px; background: rgba(11, 18, 32, 0.75); padding: 2px 8px; border-radius: 6px; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .preview { font-size: 12px; color: #cbd5e1; background: rgba(11, 18, 32, 0.9); border: 1px solid #1f2d45; border-radius: 7px; padding: 2px 8px; white-space: nowrap; }
 .preview b { color: #fca5a5; margin-left: 2px; }
@@ -317,7 +318,7 @@ const menuAlert = computed(() => {
 .preview .final-warn { margin-left: 6px; color: #f87171; font-weight: 700; }
 
 /* 선택 타워 정보 (우상단 오버레이) */
-.inspector-ov { position: absolute; top: 74px; right: 8px; z-index: 9; width: 190px; max-width: 62vw; background: rgba(14, 22, 38, 0.95); border: 1px solid #1f2d45; border-radius: 10px; padding: 10px; }
+.inspector-ov { position: absolute; top: 104px; right: 8px; z-index: 9; width: 190px; max-width: 62vw; background: rgba(14, 22, 38, 0.95); border: 1px solid #1f2d45; border-radius: 10px; padding: 10px; }
 .ins-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .ins-icon { font-size: 17px; }
 .ins-close { margin-left: auto; width: 20px; height: 20px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 5px; color: #94a3b8; cursor: pointer; font-size: 11px; }
