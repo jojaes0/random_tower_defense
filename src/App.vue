@@ -183,18 +183,26 @@ const toggleMenu = () => {
       <button class="sell" @click="engine.sellTower(sel.uid)">판매 +{{ Math.round(BALANCE.towerCost * BALANCE.sellRatio) }}</button>
     </aside>
 
-    <!-- 하단 바: 일반/합성/가스/업그레이드/메뉴 (업그레이드·메뉴는 위로 펼침) -->
+    <!-- 하단 바: 일반/합성/가스/업그레이드/메뉴 (업그레이드·메뉴는 각 버튼 위로 펼침) -->
     <div class="bottombar">
-      <div v-if="upgOpen" class="upg-pop">
-        <div class="dock-label">업그레이드 <span class="muted">가스 {{ state.gas }}</span></div>
-        <button v-for="r in RACES" :key="r.id" class="upgb" :disabled="state.gas < engine.upgradeCost(r.id)" @click="engine.buyUpgrade(r.id)">
-          <span class="upgb-r" :style="{ color: r.color }">{{ r.short }}</span>
-          <span class="upgb-lv">Lv.{{ state.upgrades[r.id] }} · +{{ upgPct(r.id) }}%</span>
-          <span class="upgb-cost">▲{{ engine.upgradeCost(r.id) }}</span>
-        </button>
+      <button class="bbtn" :class="{ active: buildMode === 'common' }" :disabled="state.minerals < BALANCE.towerCost" @click="setCommon"><i>🎲</i><span>일반 타워</span></button>
+      <button class="bbtn" :class="{ active: buildMode === 'merge' }" @click="setMerge"><i>⚙</i><span>합성 모드</span></button>
+      <button class="bbtn" :disabled="state.minerals < BALANCE.gasExchangeCost" @click="engine.gambleGas()"><i>⛽</i><span>가스 도박</span></button>
+
+      <div class="bbtn-slot">
+        <div v-if="upgOpen" class="upg-pop">
+          <div class="dock-label">업그레이드 <span class="muted">가스 {{ state.gas }}</span></div>
+          <button v-for="r in RACES" :key="r.id" class="upgb" :disabled="state.gas < engine.upgradeCost(r.id)" @click="engine.buyUpgrade(r.id)">
+            <span class="upgb-r" :style="{ color: r.color }">{{ r.short }}</span>
+            <span class="upgb-lv">Lv.{{ state.upgrades[r.id] }} · +{{ upgPct(r.id) }}%</span>
+            <span class="upgb-cost">▲{{ engine.upgradeCost(r.id) }}</span>
+          </button>
+        </div>
+        <button class="bbtn" :class="{ active: upgOpen }" @click="toggleUpg"><i>⬆</i><span>업그레이드</span></button>
       </div>
 
-      <div v-if="showMenu" class="menu-pop">
+      <div class="bbtn-slot">
+        <div v-if="showMenu" class="menu-pop">
         <div class="drawer-tabs">
           <button :class="{ on: tab === 'mission' }" @click="tab = 'mission'">개인미션</button>
           <button :class="{ on: tab === 'terrazine' }" @click="tab = 'terrazine'">테라진</button>
@@ -228,13 +236,9 @@ const toggleMenu = () => {
             </ul>
           </div>
         </div>
+        </div>
+        <button class="bbtn" :class="{ active: showMenu, alert: menuAlert }" @click="toggleMenu"><i>☰</i><span>메뉴</span></button>
       </div>
-
-      <button class="bbtn" :class="{ active: buildMode === 'common' }" :disabled="state.minerals < BALANCE.towerCost" @click="setCommon"><i>🎲</i><span>일반 타워</span></button>
-      <button class="bbtn" :class="{ active: buildMode === 'merge' }" @click="setMerge"><i>⚙</i><span>합성 모드</span></button>
-      <button class="bbtn" :disabled="state.minerals < BALANCE.gasExchangeCost" @click="engine.gambleGas()"><i>⛽</i><span>가스 도박</span></button>
-      <button class="bbtn" :class="{ active: upgOpen }" @click="toggleUpg"><i>⬆</i><span>업그레이드</span></button>
-      <button class="bbtn" :class="{ active: showMenu, alert: menuAlert }" @click="toggleMenu"><i>☰</i><span>메뉴</span></button>
     </div>
 
     <!-- 난이도 선택 -->
@@ -340,9 +344,12 @@ const toggleMenu = () => {
 .bbtn.active { border-color: #60a5fa; background: #15233f; }
 .bbtn:disabled { opacity: 0.45; cursor: not-allowed; }
 .bbtn.alert::after { content: ''; position: absolute; top: 4px; right: 6px; width: 7px; height: 7px; background: #22c55e; border-radius: 50%; }
+/* 버튼 슬롯(팝오버를 해당 버튼 위에 고정) */
+.bbtn-slot { position: relative; flex: 1; display: flex; }
+.bbtn-slot .bbtn { flex: 1; }
 
-/* 업그레이드 위로 펼침 */
-.upg-pop { position: absolute; right: 0; bottom: calc(100% + 6px); width: 220px; max-width: 84vw; background: rgba(11, 18, 32, 0.97); border: 1px solid #1f2d45; border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+/* 업그레이드 위로 펼침(업그레이드 버튼 기준, 고정 너비) */
+.upg-pop { position: absolute; right: 0; bottom: calc(100% + 6px); width: 240px; max-width: 94vw; background: rgba(11, 18, 32, 0.97); border: 1px solid #1f2d45; border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
 .dock-label { font-size: 11px; color: #cbd5e1; display: flex; justify-content: space-between; }
 .muted { color: #64748b; font-weight: 400; }
 .upgb { display: flex; align-items: center; gap: 6px; padding: 8px 9px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 7px; color: #e2e8f0; cursor: pointer; font-size: 12px; }
@@ -351,8 +358,8 @@ const toggleMenu = () => {
 .upgb-cost { color: #86efac; }
 .upgb:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* 메뉴 팝오버(하단 바에서 위로 펼침) */
-.menu-pop { position: absolute; right: 0; bottom: calc(100% + 6px); width: 320px; max-width: 92vw; max-height: 62vh; background: rgba(11, 18, 32, 0.97); border: 1px solid #1f2d45; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+/* 메뉴 팝오버(메뉴 버튼 기준, 고정 너비) */
+.menu-pop { position: absolute; right: 0; bottom: calc(100% + 6px); width: 300px; max-width: 94vw; max-height: 62vh; background: rgba(11, 18, 32, 0.97); border: 1px solid #1f2d45; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
 .drawer-tabs { display: flex; gap: 4px; padding: 8px 8px 0; overflow-x: auto; }
 .drawer-tabs button { padding: 7px 10px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 7px; color: #cbd5e1; cursor: pointer; font-size: 12px; white-space: nowrap; }
 .drawer-tabs button.on { background: #2563eb; border-color: #2563eb; color: #fff; }
