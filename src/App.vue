@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import GameField from '@/components/GameField.vue'
+import TowerIcon from '@/components/TowerIcon.vue'
 import { useGame } from '@/composables/useGame'
 import { BALANCE, DIFFICULTIES, RARITY_META } from '@/engine/balance'
 import { HERO_TOWERS, QUESTS, RACES } from '@/engine/content'
@@ -91,6 +92,12 @@ const start = () => {
 
 const sel = computed(() => engine.selectedTower)
 const selStats = computed(() => (sel.value ? engine.effectiveStats(sel.value.blueprint, sel.value.dmgBonusMul) : null))
+const sellConfirm = ref(false)
+const sellAmount = Math.round(BALANCE.towerCost * BALANCE.sellRatio)
+const doSell = () => {
+  if (sel.value) engine.sellTower(sel.value.uid)
+  sellConfirm.value = false
+}
 
 const upgPct = (race: RaceId) => +(state.upgrades[race] * BALANCE.upgradeBonusPerLevel * 100).toFixed(1)
 const raceNames = (races: RaceId[]) => races.map((r) => RACES.find((x) => x.id === r)?.name).join('·')
@@ -133,13 +140,17 @@ const toggleMenu = () => {
       </div>
     </TransitionGroup>
 
-    <!-- 상단바 (오버레이) : 배속 / 시작 -->
+    <!-- 상단바 (오버레이) : 라운드·시간·배속 / 시작 -->
     <header class="topbar">
-      <div class="speed">
-        <button :class="{ on: speed === 0 }" @click="togglePause">⏸</button>
-        <button :class="{ on: speed === 1 }" @click="setSpeed(1)">1</button>
-        <button :class="{ on: speed === 2 }" @click="setSpeed(2)">2</button>
-        <button :class="{ on: speed === 3 }" @click="setSpeed(3)">3</button>
+      <div class="tl">
+        <div class="chip"><span>R</span><b>{{ roundLabel }}</b></div>
+        <div class="chip"><span>⏱</span><b>{{ mmss(state.elapsed) }}</b></div>
+        <div class="speed">
+          <button :class="{ on: speed === 0 }" @click="togglePause">⏸</button>
+          <button :class="{ on: speed === 1 }" @click="setSpeed(1)">1</button>
+          <button :class="{ on: speed === 2 }" @click="setSpeed(2)">2</button>
+          <button :class="{ on: speed === 3 }" @click="setSpeed(3)">3</button>
+        </div>
       </div>
       <button class="start" :disabled="!canStart" @click="start">{{ state.phase === 'wave' ? '진행중' : nextRoundLabel }}</button>
     </header>
@@ -150,9 +161,7 @@ const toggleMenu = () => {
       <div class="chip gas"><span>가스</span><b>{{ state.gas }}</b></div>
       <div class="chip life"><span>♥</span><b>{{ state.life }}</b></div>
       <div class="chip terra"><span>◆</span><b>{{ state.terrazine }}</b></div>
-      <div class="chip"><span>R</span><b>{{ roundLabel }}</b></div>
       <div class="chip kill"><span>킬</span><b>{{ state.killCount }}</b></div>
-      <div class="chip time"><span>⏱</span><b>{{ mmss(state.elapsed) }}</b></div>
     </div>
 
     <!-- 메시지 + 다음 라운드 미리보기 (오버레이) -->
@@ -168,7 +177,7 @@ const toggleMenu = () => {
     <!-- 선택 타워 정보 (우상단 오버레이) -->
     <aside v-if="sel && selStats" class="inspector-ov">
       <div class="ins-name" :style="{ color: sel.blueprint.color }">
-        <span class="ins-icon">{{ sel.blueprint.icon }}</span>{{ sel.blueprint.name }}
+        <TowerIcon :bp="sel.blueprint" :size="26" />{{ sel.blueprint.name }}
         <span class="badge" :style="{ background: RARITY_META[sel.blueprint.rarity].color }">{{ RARITY_META[sel.blueprint.rarity].label }}</span>
         <button class="ins-close" @click="engine.selectTower(null)">✕</button>
       </div>
@@ -180,8 +189,20 @@ const toggleMenu = () => {
         <li><span>범위</span><b>{{ selStats.splashRadius > 0 ? selStats.splashRadius.toFixed(0) : '단일' }}</b></li>
         <li><span>보스</span><b>×{{ selStats.bonusVsBoss.toFixed(1) }}</b></li>
       </ul>
-      <button class="sell" @click="engine.sellTower(sel.uid)">판매 +{{ Math.round(BALANCE.towerCost * BALANCE.sellRatio) }}</button>
+      <button class="sell" @click="sellConfirm = true">판매 +{{ sellAmount }}</button>
     </aside>
+
+    <!-- 판매 확인 -->
+    <div v-if="sellConfirm && sel" class="overlay" @click.self="sellConfirm = false">
+      <div class="modal sell-modal">
+        <h2>판매하시겠어요?</h2>
+        <p>{{ sel.blueprint.name }} <span class="muted">({{ RARITY_META[sel.blueprint.rarity].label }})</span> 판매 시 <b style="color: #67e8f9">+{{ sellAmount }} 미네랄</b></p>
+        <div class="modal-actions row">
+          <button class="reset" @click="sellConfirm = false">취소</button>
+          <button class="sell-yes" @click="doSell">판매</button>
+        </div>
+      </div>
+    </div>
 
     <!-- 하단 바: 일반/합성/가스/업그레이드/메뉴 (업그레이드·메뉴는 각 버튼 위로 펼침) -->
     <div class="bottombar">
@@ -296,6 +317,7 @@ const toggleMenu = () => {
 
 /* 상단바 오버레이 */
 .topbar { position: absolute; top: 0; left: 0; right: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; }
+.tl { display: flex; align-items: center; gap: 6px; min-width: 0; overflow-x: auto; }
 .bar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .menu-btn { position: relative; width: 36px; height: 32px; background: rgba(11, 18, 32, 0.92); border: 1px solid #1f2d45; border-radius: 7px; color: #e2e8f0; font-size: 16px; cursor: pointer; flex-shrink: 0; }
 .menu-btn.alert::after { content: ''; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; background: #22c55e; border-radius: 50%; }
@@ -394,5 +416,9 @@ const toggleMenu = () => {
 .diff-card b { font-size: 15px; }
 .diff-card p { font-size: 12px; color: #8aa0c0; margin: 6px 0 0; }
 .modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.modal-actions.row { flex-direction: row; }
+.modal-actions.row button { flex: 1; }
 .reset { padding: 10px; background: #334155; border: none; border-radius: 8px; color: #e2e8f0; cursor: pointer; font-weight: 600; }
+.sell-yes { padding: 10px; background: #7f1d1d; border: none; border-radius: 8px; color: #fff; cursor: pointer; font-weight: 700; }
+.sell-modal { max-width: 380px; }
 </style>
