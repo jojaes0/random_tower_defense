@@ -195,6 +195,7 @@ export const TOWERS_BY_RARITY: Record<Rarity, TowerBlueprint[]> = {
 }
 
 export const HERO_TOWERS = TOWERS_BY_RARITY.hero
+export const LEGEND_TOWERS = TOWERS_BY_RARITY.legend
 
 // ---------------------------------------------------------------------------
 // 적
@@ -221,11 +222,17 @@ export const BOSS_BLUEPRINT: EnemyBlueprint = {
 // ---------------------------------------------------------------------------
 
 export const QUESTS: Quest[] = [
-  { id: 'collect_common', name: '모든 일반 유닛 수집', desc: '서로 다른 일반 8종 보유', reward: '광물 300' },
+  { id: 'collect_common', name: '모든 일반 유닛 수집', desc: '서로 다른 일반 8종 보유 (10R 이후 500)', reward: '광물 300~500' },
+  { id: 'gateway', name: '관문 유닛', desc: '희귀 광전사+용기병 또는 바퀴+히드라', reward: '광물 300' },
+  { id: 'collect_rare', name: '모든 희귀 유닛 수집', desc: '서로 다른 희귀 8종 보유', reward: '광물 500' },
   { id: 'hero7', name: '영웅 유닛 7개 수집', desc: '영웅 등급 7개 건설', reward: '광물 300' },
-  { id: 'legend6', name: '전설 유닛 6개 수집', desc: '전설 등급 6개 건설', reward: '광물 300' },
+  { id: 'collect_hero', name: '모든 영웅 유닛 수집', desc: '서로 다른 영웅 8종 보유', reward: '테라진 2' },
+  { id: 'legend6', name: '전설 유닛 6개 수집', desc: '전설 등급 6개 건설', reward: '광물 300 + 전설 선택권 1' },
+  { id: 'collect_legend', name: '모든 전설 유닛 수집', desc: '서로 다른 전설 8종 보유', reward: '전설 선택권 3' },
   { id: 'god5', name: '신 유닛 5개 수집', desc: '신 등급 5개 건설', reward: '광물 500' },
   { id: 'tri_god', name: '3종족 신 획득', desc: '테란·프로토스·저그 신 각 1', reward: '테라진 1' },
+  { id: 'mobius', name: '뫼비우스 혼종 획득', desc: '뫼비우스 혼종 보유', reward: '테라진 1' },
+  { id: 'life5', name: '라이프 5 이하', desc: '목숨 5개 이하', reward: '광물 200 · 가스 100' },
   { id: 'kill750', name: '누적 750킬', desc: '적 750마리 처치', reward: '테라진 2' },
   { id: 'time7', name: '7분 경과', desc: '게임 시작 7분', reward: '광물 200', timeThreshold: BALANCE.timeQuest7 },
   { id: 'time12', name: '12분 경과', desc: '게임 시작 12분', reward: '광물 300', timeThreshold: BALANCE.timeQuest12 },

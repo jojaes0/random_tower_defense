@@ -7,8 +7,9 @@ import { drawGlyph, raceColor, roundRect } from './glyph'
 
 const props = defineProps<{
   engine: GameEngine
-  buildMode: 'idle' | 'common' | 'hero' | 'merge'
+  buildMode: 'idle' | 'common' | 'hero' | 'legend' | 'merge'
   heroId: string | null
+  legendId: string | null
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -161,6 +162,10 @@ const handleTap = (clientX: number, clientY: number) => {
   if (props.buildMode === 'hero' && props.heroId) {
     if (hit) return // 영웅 설치 모드에서 이미 설치된 칸 → 동작 없음
     return void props.engine.buildHeroTower(props.heroId, pos)
+  }
+  if (props.buildMode === 'legend' && props.legendId) {
+    if (hit) return
+    return void props.engine.buildLegendTower(props.legendId, pos)
   }
   if (props.buildMode === 'merge') {
     if (!hit) return void props.engine.selectTower(null)
@@ -526,7 +531,7 @@ const draw = () => {
   }
 
   // 건설 커서(셀 스냅) — 마우스 배치 모드만
-  if (hover.value && (props.buildMode === 'common' || props.buildMode === 'hero')) {
+  if (hover.value && (props.buildMode === 'common' || props.buildMode === 'hero' || props.buildMode === 'legend')) {
     const cell = snapToGrid(hover.value)
     const ok = props.engine.canPlaceAt(hover.value)
     ctx.fillStyle = ok ? 'rgba(34,197,94,0.30)' : 'rgba(239,68,68,0.28)'

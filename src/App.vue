@@ -4,24 +4,25 @@ import GameField from '@/components/GameField.vue'
 import TowerIcon from '@/components/TowerIcon.vue'
 import { useGame } from '@/composables/useGame'
 import { BALANCE, DIFFICULTIES, RARITY_META } from '@/engine/balance'
-import { HERO_TOWERS, QUESTS, RACES } from '@/engine/content'
+import { HERO_TOWERS, LEGEND_TOWERS, QUESTS, RACES } from '@/engine/content'
 import type { RaceId } from '@/engine/types'
 
 const { engine, state, speed, setSpeed, togglePause, resume } = useGame()
 
-const buildMode = ref<'idle' | 'common' | 'hero' | 'merge'>('idle')
+const buildMode = ref<'idle' | 'common' | 'hero' | 'legend' | 'merge'>('idle')
 const heroId = ref<string | null>(null)
+const legendId = ref<string | null>(null)
 const showMenu = ref(false)
 const tab = ref<'mission' | 'terrazine' | 'quest'>('mission')
 const upgOpen = ref(false)
 
 const setCommon = () => {
   buildMode.value = buildMode.value === 'common' ? 'idle' : 'common'
-  heroId.value = null
+  heroId.value = legendId.value = null
 }
 const setMerge = () => {
   buildMode.value = buildMode.value === 'merge' ? 'idle' : 'merge'
-  heroId.value = null
+  heroId.value = legendId.value = null
 }
 const selectHero = (id: string) => {
   if (buildMode.value === 'hero' && heroId.value === id) {
@@ -30,6 +31,18 @@ const selectHero = (id: string) => {
   } else {
     buildMode.value = 'hero'
     heroId.value = id
+    legendId.value = null
+    showMenu.value = false
+  }
+}
+const selectLegend = (id: string) => {
+  if (buildMode.value === 'legend' && legendId.value === id) {
+    buildMode.value = 'idle'
+    legendId.value = null
+  } else {
+    buildMode.value = 'legend'
+    legendId.value = id
+    heroId.value = null
     showMenu.value = false
   }
 }
@@ -50,12 +63,16 @@ watch(
 )
 
 watch(
-  () => [state.minerals, state.terrazine, buildMode.value],
+  () => [state.minerals, state.terrazine, state.legendPicks, buildMode.value],
   () => {
     if (buildMode.value === 'common' && state.minerals < BALANCE.towerCost) buildMode.value = 'idle'
     if (buildMode.value === 'hero' && (state.minerals < BALANCE.heroPickMineralCost || state.terrazine < 1)) {
       buildMode.value = 'idle'
       heroId.value = null
+    }
+    if (buildMode.value === 'legend' && state.legendPicks < 1) {
+      buildMode.value = 'idle'
+      legendId.value = null
     }
   },
 )
@@ -123,7 +140,7 @@ const toggleMenu = () => {
 <template>
   <div class="app">
     <!-- 전체화면 맵 (배경) -->
-    <GameField :engine="engine" :build-mode="buildMode" :hero-id="heroId" />
+    <GameField :engine="engine" :build-mode="buildMode" :hero-id="heroId" :legend-id="legendId" />
 
     <!-- 체력 손실 플래시 -->
     <div v-if="lifeFlash" :key="lifeFlash" class="life-vignette"></div>
@@ -247,6 +264,10 @@ const toggleMenu = () => {
             <p class="d-help" style="margin-top: 12px">영웅 선택권 — ◆1 + {{ BALANCE.heroPickMineralCost }}원 (선택 후 맵 탭)</p>
             <div class="hero-grid">
               <button v-for="h in HERO_TOWERS" :key="h.id" class="hero-btn" :class="{ active: heroId === h.id }" :disabled="state.terrazine < 1 || state.minerals < BALANCE.heroPickMineralCost" @click="selectHero(h.id)"><TowerIcon :bp="h" :size="20" /><span>{{ h.name }}</span></button>
+            </div>
+            <p class="d-help" style="margin-top: 12px">전설 확정 선택권 — 보유 <b style="color:#fb923c">{{ state.legendPicks }}</b> (퀘스트 보상 · 무료, 선택 후 맵 탭)</p>
+            <div class="hero-grid">
+              <button v-for="l in LEGEND_TOWERS" :key="l.id" class="hero-btn legend" :class="{ active: legendId === l.id }" :disabled="state.legendPicks < 1" @click="selectLegend(l.id)"><TowerIcon :bp="l" :size="20" /><span>{{ l.name }}</span></button>
             </div>
           </div>
           <div v-if="tab === 'quest'">
@@ -410,6 +431,8 @@ const toggleMenu = () => {
 .hero-btn canvas { flex-shrink: 0; }
 .hero-btn.active { background: #4c1d95; border-color: #a855f7; }
 .hero-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.hero-btn.legend { border-color: #c2410c; }
+.hero-btn.legend.active { background: #7c2d12; border-color: #f97316; }
 .quest-list { list-style: none; padding: 0; margin: 0; }
 .quest-list li { padding: 8px 0; border-top: 1px solid #1f2d45; }
 .quest-list li.done { opacity: 0.5; }

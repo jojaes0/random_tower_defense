@@ -52,6 +52,8 @@ export interface GameState {
   missions: PersonalMission[]
   selectedTowerUid: number | null
   killCount: number
+  /** 전설 확정 선택 건설권 보유 수(퀘스트 보상) */
+  legendPicks: number
   questsDone: Record<string, boolean>
   lastGasGamble: number | null
   notifications: GameNotification[]
@@ -126,6 +128,7 @@ export class GameEngine {
     missions: PERSONAL_MISSIONS.map((m) => ({ ...m, cooldownRemaining: 0, active: false, clears: 0 })),
     selectedTowerUid: null,
     killCount: 0,
+    legendPicks: 0,
     questsDone: {},
     lastGasGamble: null,
     notifications: [],
@@ -332,6 +335,20 @@ export class GameEngine {
     return true
   }
 
+  buildLegendTower = (blueprintId: string, pos: Vec2): boolean => {
+    const bp = TOWERS_BY_ID[blueprintId]
+    if (!bp || bp.rarity !== 'legend') return false
+    if (this.state.legendPicks < 1) return this.fail('전설 선택권이 없습니다.')
+    const cell = snapToGrid(pos)
+    if (!isBuildableCell(cell)) return this.fail('여기에는 지을 수 없습니다.')
+    if (this.cellOccupied(cell)) return this.fail('이미 타워가 있는 칸입니다.')
+    this.state.legendPicks -= 1
+    this.placeTower(bp, cell)
+    this.state.message = `[전설] ${bp.name} 확정 건설! (남은 선택권 ${this.state.legendPicks})`
+    this.afterChange()
+    return true
+  }
+
   private placeTower = (bp: TowerBlueprint, pos: Vec2): Tower => {
     const tower: Tower = { uid: this.nextUid(), blueprint: bp, pos, cooldown: 0, cooldown2: 0, dmgBonusMul: 1, modeTimer: 0, modeType: null, lastTargetUid: -1 }
     this.state.towers.push(tower)
@@ -467,13 +484,30 @@ export class GameEngine {
       s.message = `퀘스트 달성! ${name} → ${reward}`
       this.notify('quest', name, reward)
     }
-    if (!s.questsDone['collect_common'] && new Set(byRarity('common').map((t) => t.blueprint.id)).size >= 8)
-      award('collect_common', () => (s.minerals += 300))
+    const ids = (r: string) => new Set(byRarity(r).map((t) => t.blueprint.id))
+    const has = (id: string) => s.towers.some((t) => t.blueprint.id === id)
+    // 일반 8종 수집 — 10라운드 이후 달성 시 500, 그 전엔 300
+    if (!s.questsDone['collect_common'] && ids('common').size >= 8)
+      award('collect_common', () => (s.minerals += s.round > BALANCE.bossEvery ? 500 : 300))
+    // 관문 유닛: 희귀 (광전사+용기병) 또는 (바퀴+히드라)
+    if (!s.questsDone['gateway'] && ((has('zealot') && has('dragoon')) || (has('roach') && has('hydralisk'))))
+      award('gateway', () => (s.minerals += 300))
+    // 모든 희귀 8종 수집
+    if (!s.questsDone['collect_rare'] && ids('rare').size >= 8) award('collect_rare', () => (s.minerals += 500))
     if (byRarity('hero').length >= 7) award('hero7', () => (s.minerals += 300))
-    if (byRarity('legend').length >= 6) award('legend6', () => (s.minerals += 300))
+    // 모든 영웅 종류 수집(8종)
+    if (!s.questsDone['collect_hero'] && ids('hero').size >= 8) award('collect_hero', () => (s.terrazine += 2))
+    // 전설 6개 → 광물 300 + 전설 선택권 1
+    if (byRarity('legend').length >= 6) award('legend6', () => ((s.minerals += 300), (s.legendPicks += 1)))
+    // 모든 전설 종류 수집(8종) → 전설 선택권 3
+    if (!s.questsDone['collect_legend'] && ids('legend').size >= 8) award('collect_legend', () => (s.legendPicks += 3))
     if (byRarity('god').length >= 5) award('god5', () => (s.minerals += 500))
     if (!s.questsDone['tri_god'] && new Set(byRarity('god').map((t) => t.blueprint.race)).size >= 3)
       award('tri_god', () => (s.terrazine += BALANCE.terrazineTriRaceGod))
+    // 뫼비우스 혼종 보유
+    if (!s.questsDone['mobius'] && has('mobius_hybrid')) award('mobius', () => (s.terrazine += 1))
+    // 라이프 5 이하
+    if (!s.questsDone['life5'] && s.round >= 1 && s.life <= 5) award('life5', () => ((s.minerals += 200), (s.gas += 100)))
     if (!s.questsDone['kill750'] && s.killCount >= BALANCE.killMilestone)
       award('kill750', () => (s.terrazine += BALANCE.terrazineKillReward))
     if (!s.questsDone['time7'] && s.elapsed >= BALANCE.timeQuest7) award('time7', () => (s.minerals += 200))
@@ -931,13 +965,27 @@ export class GameEngine {
     const s = this.state
     const c = (r: string) => s.towers.filter((t) => t.blueprint.rarity === r).length
     const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
+    const uniq = (r: string) => new Set(s.towers.filter((t) => t.blueprint.rarity === r).map((t) => t.blueprint.id)).size
+    const has = (i: string) => s.towers.some((t) => t.blueprint.id === i)
     switch (id) {
       case 'collect_common':
-        return `${new Set(s.towers.filter((t) => t.blueprint.rarity === 'common').map((t) => t.blueprint.id)).size}/8`
+        return `${uniq('common')}/8`
+      case 'gateway':
+        return (has('zealot') && has('dragoon')) || (has('roach') && has('hydralisk')) ? '달성' : '광전사+용기병 / 바퀴+히드라'
+      case 'collect_rare':
+        return `${uniq('rare')}/8`
       case 'hero7':
         return `${c('hero')}/7`
+      case 'collect_hero':
+        return `${uniq('hero')}/8`
       case 'legend6':
         return `${c('legend')}/6`
+      case 'collect_legend':
+        return `${uniq('legend')}/8`
+      case 'mobius':
+        return has('mobius_hybrid') ? '달성' : '뫼비우스 혼종 필요'
+      case 'life5':
+        return `목숨 ${s.life}${s.life <= 5 ? ' ✔' : ' (≤5)'}`
       case 'god5':
         return `${c('god')}/5`
       case 'tri_god':
