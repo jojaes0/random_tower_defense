@@ -66,12 +66,12 @@ export const BALANCE = {
 } as const
 
 /** 난이도 */
-// 어려움(500%)이 실제 랜타디 표준 체력. 보통·쉬움은 그 체력을 줄인 버전(80%·60%).
+// 어려움이 실제 랜타디 표준 체력(원게임 500%). 보통·쉬움은 그 체력을 줄인 버전(80%·60%).
 export const DIFFICULTIES: Difficulty[] = [
-  { id: 'd300', name: '쉬움 (300%)', desc: '표준의 60% 체력 · 목숨 20 — 가장 쉬움', hpMult: 3, startLife: 20, startMineralBonus: 0, startGasBonus: 0 },
-  { id: 'd400', name: '보통 (400%)', desc: '표준의 80% 체력 · 목숨 20', hpMult: 4, startLife: 20, startMineralBonus: 0, startGasBonus: 0 },
-  { id: 'd500', name: '어려움 (500%)', desc: '표준 체력(실제 랜타디) · 목숨 20', hpMult: 5, startLife: 20, startMineralBonus: 0, startGasBonus: 0 },
-  { id: 'hell', name: '지옥 (500% · 목숨5)', desc: '어려움과 같은 체력 · 목숨 5 + 보너스(미네랄200·가스100)', hpMult: 5, startLife: 5, startMineralBonus: 200, startGasBonus: 100 },
+  { id: 'd300', name: '쉬움', desc: '표준의 60% 체력 · 목숨 20 — 가장 쉬움', hpMult: 3, startLife: 20, startMineralBonus: 0, startGasBonus: 0 },
+  { id: 'd400', name: '보통', desc: '표준의 80% 체력 · 목숨 20', hpMult: 4, startLife: 20, startMineralBonus: 0, startGasBonus: 0 },
+  { id: 'd500', name: '어려움', desc: '표준 체력(실제 랜타디 기준) · 목숨 20', hpMult: 5, startLife: 20, startMineralBonus: 0, startGasBonus: 0 },
+  { id: 'hell', name: '지옥', desc: '어려움과 같은 체력 · 목숨 5 + 시작 보너스(미네랄200·가스100)', hpMult: 5, startLife: 5, startMineralBonus: 200, startGasBonus: 100 },
 ]
 
 /** 게임유닛 사거리 → 픽셀 환산. 실제 SC2 비율: 건설 타일 1칸 = 2 게임유닛 → 사거리 1 = 0.5칸 */
