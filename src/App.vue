@@ -415,8 +415,8 @@ const toggleMenu = () => {
 
 /* 메뉴 팝오버(메뉴 버튼 기준, 고정 너비) */
 .menu-pop { position: absolute; right: 0; bottom: calc(100% + 6px); width: 300px; max-width: 94vw; max-height: 62vh; background: rgba(11, 18, 32, 0.97); border: 1px solid #1f2d45; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
-.drawer-tabs { display: flex; gap: 4px; padding: 8px 8px 0; overflow-x: auto; }
-.drawer-tabs button { padding: 7px 10px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 7px; color: #cbd5e1; cursor: pointer; font-size: 12px; white-space: nowrap; }
+.drawer-tabs { display: flex; gap: 4px; padding: 8px; overflow-x: auto; flex-shrink: 0; }
+.drawer-tabs button { flex-shrink: 0; padding: 7px 10px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 7px; color: #cbd5e1; cursor: pointer; font-size: 12px; white-space: nowrap; }
 .drawer-tabs button.on { background: #2563eb; border-color: #2563eb; color: #fff; }
 .drawer-body { padding: 12px; overflow-y: auto; }
 .d-help { font-size: 11px; color: #8aa0c0; margin: 0 0 10px; line-height: 1.5; }

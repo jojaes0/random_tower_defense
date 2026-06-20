@@ -185,6 +185,9 @@ export class GameEngine {
     this.state.life = d.startLife
     this.state.minerals += d.startMineralBonus
     this.state.gas += d.startGasBonus
+    // 지옥처럼 목숨5로 시작하며 보너스(미네랄200·가스100)를 받는 난이도는 그 보너스가 곧 '라이프5이하' 보상.
+    // 시작 보너스와 퀘스트 보상의 중복 수령을 막기 위해 해당 퀘스트를 시작 시 완료 처리.
+    if (d.startMineralBonus > 0 || d.startGasBonus > 0) this.state.questsDone['life5'] = true
     this.state.phase = 'building'
     this.state.message = `${d.name} 시작! 일반 타워를 짓고 같은 종류 2개를 합성하세요.`
     this.onChange()
