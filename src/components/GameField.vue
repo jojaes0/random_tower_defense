@@ -228,9 +228,9 @@ const draw = () => {
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillStyle = '#22c55e'
-  ctx.fillText('시작', PATH_START.x, PATH_START.y + 12)
+  ctx.fillText('시작', PATH_START.x, PATH_START.y - 10)
   ctx.fillStyle = '#ef4444'
-  ctx.fillText('종료', PATH_END.x, PATH_END.y + 12)
+  ctx.fillText('종료', PATH_END.x, PATH_END.y - 10)
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
 
