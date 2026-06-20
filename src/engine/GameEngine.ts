@@ -551,8 +551,9 @@ export class GameEngine {
     // 말라쉬 창조의 숨결 — 아군 버프 지속시간 감소
     if (s.allyBuffTimer > 0) s.allyBuffTimer = Math.max(0, s.allyBuffTimer - dt)
 
-    // 미션 몹은 건설 페이즈에도 맵을 걷는다 → 적이 있으면 전투 시뮬레이션 수행
-    if (s.phase === 'wave' || s.enemies.length > 0) {
+    // 미션 몹은 건설 페이즈에도 맵을 걷는다 → 적이 있으면 전투 시뮬레이션 수행.
+    // 남은 미니언(식충) 회수를 위해 미니언이 있을 때도 시뮬을 돌린다.
+    if (s.phase === 'wave' || s.enemies.length > 0 || s.minions.length > 0) {
       this.enemyTick(dt)
       this.towerTick(dt)
       this.minionTick(dt)
@@ -734,6 +735,8 @@ export class GameEngine {
   private summonTick = (t: Tower, dt: number): void => {
     t.cooldown2 -= dt
     if (t.cooldown2 > 0) return
+    // 필드에 적이 없으면 소환하지 않음(즉시 회수 깜빡임 방지)
+    if (this.state.enemies.length === 0) return
     t.cooldown2 = BALANCE.locustInterval
     const alive = this.state.minions.filter((m) => m.ownerUid === t.uid).length
     const stats = this.effectiveStats(t.blueprint, t.dmgBonusMul)
@@ -771,31 +774,31 @@ export class GameEngine {
           target = e
         }
       }
-      if (target) {
-        if (best > m.range) {
-          const dx = target.pos.x - m.pos.x
-          const dy = target.pos.y - m.pos.y
-          const len = Math.hypot(dx, dy) || 1
-          m.pos = { x: m.pos.x + (dx / len) * m.speed * dt, y: m.pos.y + (dy / len) * m.speed * dt }
-        }
-        m.cooldown -= dt
-        if (best <= m.range && m.cooldown <= 0) {
-          m.cooldown = 1 / m.attackSpeed
-          this.state.projectiles.push({
-            uid: this.nextUid(),
-            from: { ...m.pos },
-            to: { ...target.pos },
-            targetUid: target.uid,
-            damage: m.damage,
-            splashRadius: 0,
-            bonusVsBoss: m.bonusVsBoss,
-            color: m.color,
-            melee: false,
-            rank: 1,
-            t: 0,
-            speed: 10,
-          })
-        }
+      // 공격할 적이 없으면 회수(빈 공격로에 남지 않도록)
+      if (!target) continue
+      if (best > m.range) {
+        const dx = target.pos.x - m.pos.x
+        const dy = target.pos.y - m.pos.y
+        const len = Math.hypot(dx, dy) || 1
+        m.pos = { x: m.pos.x + (dx / len) * m.speed * dt, y: m.pos.y + (dy / len) * m.speed * dt }
+      }
+      m.cooldown -= dt
+      if (best <= m.range && m.cooldown <= 0) {
+        m.cooldown = 1 / m.attackSpeed
+        this.state.projectiles.push({
+          uid: this.nextUid(),
+          from: { ...m.pos },
+          to: { ...target.pos },
+          targetUid: target.uid,
+          damage: m.damage,
+          splashRadius: 0,
+          bonusVsBoss: m.bonusVsBoss,
+          color: m.color,
+          melee: false,
+          rank: 1,
+          t: 0,
+          speed: 10,
+        })
       }
       survivors.push(m)
     }
