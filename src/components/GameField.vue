@@ -264,10 +264,11 @@ const draw = () => {
       ctx.save()
       roundRect(ctx, bx - r, by - r, r * 2, r * 2, 6)
       ctx.clip()
-      ctx.fillStyle = raceColor(bp.races[0])
-      ctx.fillRect(bx - r, by - r, r, r * 2)
-      ctx.fillStyle = raceColor(bp.races[1])
-      ctx.fillRect(bx, by - r, r, r * 2)
+      const sw = (r * 2) / bp.races.length
+      bp.races.forEach((rc, i) => {
+        ctx.fillStyle = raceColor(rc)
+        ctx.fillRect(bx - r + i * sw, by - r, sw + 0.5, r * 2)
+      })
       ctx.restore()
     } else {
       ctx.fillStyle = raceColor(bp.race)

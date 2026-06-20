@@ -1,5 +1,5 @@
-// 콘텐츠 — 3종족, 타워 풀(40여 종), 적, 퀘스트
-// 신/전설 타워는 나무위키의 실제 DPS·사거리 수치를 반영했다.
+// 콘텐츠 — 3종족, 타워 풀(44종: 일반8·희귀8·영웅8·전설8·신12), 적, 퀘스트
+// 타워 스탯(DPS·공격속도·사거리)은 "뉴 랜타디 23" 인게임 데이터(사용자 제공) 기준.
 
 import { BALANCE, RANGE_SCALE, RARITY_META } from './balance'
 import type {
@@ -55,76 +55,77 @@ interface TowerDef {
 const roleSplash: Record<Role, number> = { line: 50, balance: 30, boss: 0 }
 const roleBoss: Record<Role, number> = { line: 1.0, balance: 1.4, boss: 2.2 }
 
+// 뉴 랜타디 23 인게임 데이터(사용자 제공). role/splash/보스보너스는 데이터에 없어 placeholder('balance').
+// dps=공식 DPS, interval=공격속도(초), rangeUnit=사거리. damage=round(dps*interval), 공속=1/interval.
 const DEFS: TowerDef[] = [
   // ── 일반(common) 8 ──────────────────────────────────────────────
-  { id: 'marine', name: '해병', race: 'terran', rarity: 'common', role: 'line', dps: 180, interval: 0.4, rangeUnit: 6 },
-  { id: 'vulture', name: '시체매', race: 'terran', rarity: 'common', role: 'line', dps: 120, interval: 0.5, rangeUnit: 6 },
-  { id: 'wraith', name: '망령', race: 'terran', rarity: 'common', role: 'balance', dps: 110, interval: 0.6, rangeUnit: 6 },
-  { id: 'roach', name: '바퀴', race: 'zerg', rarity: 'common', role: 'balance', dps: 130, interval: 0.5, rangeUnit: 6 },
-  { id: 'mutalisk', name: '뮤탈리스크', race: 'zerg', rarity: 'common', role: 'line', dps: 160, interval: 0.5, rangeUnit: 6 },
-  { id: 'zealot', name: '광전사', race: 'protoss', rarity: 'common', role: 'line', dps: 210, interval: 0.4, rangeUnit: 3 },
-  { id: 'stalker', name: '추적자', race: 'protoss', rarity: 'common', role: 'boss', dps: 120, interval: 0.6, rangeUnit: 6 },
-  { id: 'scout', name: '정찰기', race: 'protoss', rarity: 'common', role: 'balance', dps: 110, interval: 0.5, rangeUnit: 6 },
+  { id: 'scv', name: '건설 로봇', race: 'terran', rarity: 'common', role: 'balance', dps: 41.6, interval: 1.2, rangeUnit: 7 },
+  { id: 'trooper', name: '부대원', race: 'terran', rarity: 'common', role: 'balance', dps: 26, interval: 0.69, rangeUnit: 6 },
+  { id: 'reaper', name: '사신', race: 'protoss', rarity: 'common', role: 'balance', dps: 16, interval: 0.88, rangeUnit: 6 },
+  { id: 'fanatic', name: '광신자', race: 'protoss', rarity: 'common', role: 'balance', dps: 45, interval: 1, rangeUnit: 7 },
+  { id: 'stalker', name: '추적자', race: 'protoss', rarity: 'common', role: 'balance', dps: 40, interval: 1.15, rangeUnit: 7 },
+  { id: 'gargoyle', name: '갈귀', race: 'zerg', rarity: 'common', role: 'balance', dps: 27.3, interval: 0.83, rangeUnit: 7 },
+  { id: 'overlord', name: '대군주', race: 'zerg', rarity: 'common', role: 'balance', dps: 23.4, interval: 0.68, rangeUnit: 7 },
+  { id: 'zergling', name: '저글링', race: 'zerg', rarity: 'common', role: 'balance', dps: 22, interval: 0.56, rangeUnit: 5 },
 
   // ── 희귀(rare) 8 ────────────────────────────────────────────────
-  { id: 'firebat', name: '화염방사병', race: 'terran', rarity: 'rare', role: 'line', dps: 450, interval: 0.4, rangeUnit: 7 },
-  { id: 'siege', name: '공성전차', race: 'terran', rarity: 'rare', role: 'boss', dps: 300, interval: 1.0, rangeUnit: 13 },
-  { id: 'viking', name: '바이킹', race: 'terran', rarity: 'rare', role: 'balance', dps: 500, interval: 0.5, rangeUnit: 7 },
-  { id: 'inf_marine', name: '감염된 해병', race: 'zerg', rarity: 'rare', role: 'line', dps: 350, interval: 0.5, rangeUnit: 7 },
-  { id: 'infestor', name: '감염충', race: 'zerg', rarity: 'rare', role: 'balance', dps: 420, interval: 0.6, rangeUnit: 7 },
-  { id: 'archon', name: '집정관', race: 'protoss', rarity: 'rare', role: 'balance', dps: 560, interval: 0.4, rangeUnit: 7 },
-  { id: 'dark_templar', name: '암흑 기사', race: 'protoss', rarity: 'rare', role: 'line', dps: 700, interval: 0.3, rangeUnit: 3 },
-  { id: 'phoenix', name: '불사조', race: 'protoss', rarity: 'rare', role: 'line', dps: 800, interval: 0.35, rangeUnit: 7 },
+  { id: 'marauder_corps', name: '불곰 특공대', race: 'terran', rarity: 'rare', role: 'balance', dps: 81.9, interval: 1.2, rangeUnit: 7 },
+  { id: 'cyclone', name: '사이클론', race: 'terran', rarity: 'rare', role: 'balance', dps: 20.8, interval: 0.25, rangeUnit: 7 },
+  { id: 'ghost', name: '유령', race: 'terran', rarity: 'rare', role: 'balance', dps: 75, interval: 1.12, rangeUnit: 8 },
+  { id: 'zealot', name: '광전사', race: 'protoss', rarity: 'rare', role: 'balance', dps: 39, interval: 0.96, rangeUnit: 5 },
+  { id: 'dragoon', name: '용기병', race: 'protoss', rarity: 'rare', role: 'balance', dps: 99, interval: 1.44, rangeUnit: 1.7 },
+  { id: 'warp_prism', name: '전쟁 분광기', race: 'protoss', rarity: 'rare', role: 'balance', dps: 70, interval: 1.04, rangeUnit: 8 },
+  { id: 'roach', name: '바퀴', race: 'zerg', rarity: 'rare', role: 'balance', dps: 115, interval: 1.6, rangeUnit: 6 },
+  { id: 'hydralisk', name: '히드라리스크', race: 'zerg', rarity: 'rare', role: 'balance', dps: 55, interval: 0.83, rangeUnit: 7.2 },
 
   // ── 영웅(hero) 8 ────────────────────────────────────────────────
-  { id: 'goliath', name: '골리앗', race: 'terran', rarity: 'hero', role: 'boss', dps: 700, interval: 0.8, rangeUnit: 11 },
-  { id: 'banshee', name: '밴시', race: 'terran', rarity: 'hero', role: 'line', dps: 1100, interval: 0.5, rangeUnit: 8 },
-  { id: 'herc', name: '허크', race: 'terran', rarity: 'hero', role: 'line', dps: 1400, interval: 0.4, rangeUnit: 5 },
-  { id: 'aberration', name: '파멸충', race: 'zerg', rarity: 'hero', role: 'boss', dps: 900, interval: 0.6, rangeUnit: 8 },
-  { id: 'devourer', name: '포식귀', race: 'zerg', rarity: 'hero', role: 'line', dps: 700, interval: 0.6, rangeUnit: 8 },
-  { id: 'arbiter', name: '중재자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 1000, interval: 0.5, rangeUnit: 8 },
-  { id: 'corsair', name: '해적선', race: 'protoss', rarity: 'hero', role: 'line', dps: 1100, interval: 0.4, rangeUnit: 8 },
-  { id: 'dragoon', name: '용기병', race: 'protoss', rarity: 'hero', role: 'boss', dps: 1000, interval: 0.6, rangeUnit: 8 },
+  { id: 'goliath', name: '골리앗', race: 'terran', rarity: 'hero', role: 'balance', dps: 156, interval: 3, rangeUnit: 9 },
+  { id: 'thor', name: '토르', race: 'terran', rarity: 'hero', role: 'balance', dps: 137, interval: 1.1, rangeUnit: 7.2 },
+  { id: 'ascendant', name: '승천자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 208, interval: 1.6, rangeUnit: 7.2 },
+  { id: 'executor', name: '젤나가 집행자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 273, interval: 1.45, rangeUnit: 7.2 },
+  { id: 'reaver', name: '파괴자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 247, interval: 1.8, rangeUnit: 7.2 },
+  { id: 'swarm_host', name: '군단 숙주', race: 'zerg', rarity: 'hero', role: 'balance', dps: 52, interval: 2.5, rangeUnit: 7.2 },
+  { id: 'queen', name: '여왕', race: 'zerg', rarity: 'hero', role: 'balance', dps: 364, interval: 1.5, rangeUnit: 9 },
+  { id: 'primal_igniter', name: '원시 점화자', race: 'zerg', rarity: 'hero', role: 'balance', dps: 195, interval: 1, rangeUnit: 6 },
 
-  // ── 전설(legend) 8 — 실제 DPS·사거리 ────────────────────────────
-  { id: 'valkyrie', name: '발키리', race: 'terran', rarity: 'legend', role: 'line', dps: 1920, interval: 0.5, rangeUnit: 7.2 },
-  { id: 'liberator', name: '해방선', race: 'terran', rarity: 'legend', role: 'line', dps: 1577, interval: 0.6, rangeUnit: 7.2 },
-  { id: 'guardian', name: '수호군주', race: 'zerg', rarity: 'legend', role: 'line', dps: 666, interval: 0.6, rangeUnit: 10.8, skill: 'multi3', skillDesc: '한 번에 최대 3마리 타격' },
-  { id: 'zergling_l', name: '저글링', race: 'zerg', rarity: 'legend', role: 'line', dps: 2070, interval: 0.3, rangeUnit: 6 },
-  { id: 'hydra_l', name: '히드라리스크', race: 'zerg', rarity: 'legend', role: 'balance', dps: 1428, interval: 0.4, rangeUnit: 7.2 },
-  { id: 'immortal', name: '불멸자', race: 'protoss', rarity: 'legend', role: 'boss', dps: 1670, interval: 0.5, rangeUnit: 7.2 },
-  { id: 'destroyer', name: '파괴자', race: 'protoss', rarity: 'legend', role: 'line', dps: 1268, interval: 0.5, rangeUnit: 7.2 },
-  { id: 'hybrid', name: '혼종', race: 'protoss', races: ['protoss', 'zerg'], rarity: 'legend', role: 'balance', dps: 1680, interval: 0.5, rangeUnit: 9.6 },
+  // ── 전설(legend) 8 ──────────────────────────────────────────────
+  { id: 'valerius', name: '발리우스', race: 'terran', rarity: 'legend', role: 'balance', dps: 527, interval: 1, rangeUnit: 7.2 },
+  { id: 'warfield', name: '워필드', race: 'terran', rarity: 'legend', role: 'balance', dps: 585, interval: 1.04, rangeUnit: 7.2 },
+  { id: 'mojo', name: '모조', race: 'protoss', rarity: 'legend', role: 'balance', dps: 1200, interval: 1.2, rangeUnit: 7.2 },
+  { id: 'mohandar', name: '모한다르', race: 'protoss', rarity: 'legend', role: 'balance', dps: 128, interval: 1, rangeUnit: 11 },
+  { id: 'urun', name: '우룬', race: 'protoss', rarity: 'legend', role: 'balance', dps: 273, interval: 0.8, rangeUnit: 7.2 },
+  { id: 'zagara', name: '자가라', race: 'zerg', rarity: 'legend', role: 'balance', dps: 292, interval: 1.35, rangeUnit: 7 },
+  { id: 'torrasque', name: '토라스크', race: 'zerg', rarity: 'legend', role: 'balance', dps: 325, interval: 0.5, rangeUnit: 7 },
+  { id: 'mecha_ravager', name: '메카 궤멸충', race: 'terran', races: ['terran', 'zerg'], rarity: 'legend', role: 'balance', dps: 858, interval: 1.3, rangeUnit: 7.2 },
 
-  // ── 신(god) 9 — 실제 DPS·사거리 ─────────────────────────────────
-  { id: 'lurker', name: '가시지옥', race: 'zerg', rarity: 'god', role: 'line', dps: 2812, interval: 0.5, rangeUnit: 10.8 },
-  { id: 'ravager', name: '궤멸충', race: 'zerg', rarity: 'god', role: 'boss', dps: 5666, interval: 0.3, rangeUnit: 7.2 },
-  { id: 'ultralisk', name: '울트라리스크', race: 'zerg', rarity: 'god', role: 'line', dps: 5000, interval: 0.35, rangeUnit: 5.4 },
-  { id: 'high_templar', name: '고위 기사', race: 'protoss', rarity: 'god', role: 'line', dps: 3900, interval: 0.5, rangeUnit: 7.2, skill: 'multi3', skillDesc: '빠른 공속·스플래시 광역(라인 정리)' },
-  { id: 'adept', name: '사도', race: 'protoss', rarity: 'god', role: 'balance', dps: 3857, interval: 0.7, rangeUnit: 8.4, skill: 'clone', skillDesc: '확률적 분신 → 공격력 누적 증가' },
-  { id: 'carrier', name: '우주모함', race: 'protoss', rarity: 'god', role: 'line', dps: 2000, interval: 0.2, rangeUnit: 13.2 },
-  { id: 'science', name: '과학선', race: 'terran', rarity: 'god', role: 'line', dps: 3375, interval: 0.8, rangeUnit: 7.2 },
-  { id: 'marauder_g', name: '불곰', race: 'terran', rarity: 'god', role: 'boss', dps: 5000, interval: 0.5, rangeUnit: 7.2, skill: 'slow', skillDesc: '공격 시 대상 이동속도 감소' },
-  { id: 'spectre', name: '악령', race: 'terran', rarity: 'god', role: 'balance', dps: 6000, interval: 0.3, rangeUnit: 10.8, skill: 'multi3', skillDesc: '한 번에 최대 3마리 타격' },
+  // ── 신(god) 12 ──────────────────────────────────────────────────
+  { id: 'sam', name: '사기꾼 샘', race: 'terran', rarity: 'god', role: 'balance', dps: 1650, interval: 0.88, rangeUnit: 7.2 },
+  { id: 'tauren_marine', name: '타우렌 우주 해병', race: 'terran', rarity: 'god', role: 'balance', dps: 1900, interval: 0.6, rangeUnit: 7.2 },
+  { id: 'duke', name: '듀크', race: 'terran', rarity: 'god', role: 'balance', dps: 2300, interval: 1, rangeUnit: 10 },
+  { id: 'rasagal', name: '라자갈', race: 'protoss', rarity: 'god', role: 'balance', dps: 1250, interval: 0.27, rangeUnit: 7.2 },
+  { id: 'malash', name: '말라쉬', race: 'protoss', rarity: 'god', role: 'balance', dps: 2400, interval: 0.7, rangeUnit: 7.2 },
+  { id: 'vorazun', name: '보라준', race: 'protoss', rarity: 'god', role: 'balance', dps: 1550, interval: 0.95, rangeUnit: 7.2 },
+  { id: 'impaler', name: '추적 도살자', race: 'zerg', rarity: 'god', role: 'balance', dps: 2700, interval: 0.7, rangeUnit: 7.2 },
+  { id: 'sliven', name: '슬리반', race: 'zerg', rarity: 'god', role: 'balance', dps: 1000, interval: 1.35, rangeUnit: 7.2 },
+  { id: 'mobius_hybrid', name: '뫼비우스 혼종', race: 'terran', races: ['terran', 'protoss', 'zerg'], rarity: 'god', role: 'balance', dps: 1400, interval: 1.25, rangeUnit: 10 },
+  { id: 'raynor', name: '레이너', race: 'terran', rarity: 'god', role: 'balance', dps: 3800, interval: 0.6, rangeUnit: 7.2 },
+  { id: 'zeratul', name: '제라툴', race: 'protoss', rarity: 'god', role: 'balance', dps: 2650, interval: 0.95, rangeUnit: 7.2 },
+  { id: 'kukulza', name: '쿠쿨자', race: 'zerg', rarity: 'god', role: 'balance', dps: 3500, interval: 1, rangeUnit: 7.2 },
 ]
 
 // 타워별 캐릭터 아이콘 — 무슨 유닛인지 한눈에 구분
 const ICONS: Record<string, string> = {
   // 일반
-  marine: '🔫', vulture: '🏍️', wraith: '🛩️', roach: '🐛',
-  mutalisk: '🦇', zealot: '⚔️', stalker: '🕷️', scout: '✈️',
+  scv: '🔧', trooper: '🪖', reaper: '🪂', fanatic: '⚔️', stalker: '🕷️', gargoyle: '🦇', overlord: '🎈', zergling: '🐜',
   // 희귀
-  firebat: '🔥', siege: '💣', viking: '🚀', inf_marine: '🧟',
-  infestor: '🪱', archon: '⚡', dark_templar: '🗡️', phoenix: '🔆',
+  marauder_corps: '🐻', cyclone: '🌀', ghost: '👻', zealot: '🗡️', dragoon: '🦿', warp_prism: '🛸', roach: '🐛', hydralisk: '🐍',
   // 영웅
-  goliath: '🤖', banshee: '🚁', herc: '🦾', aberration: '👹',
-  devourer: '🦟', arbiter: '🔮', corsair: '🛸', dragoon: '🦿',
+  goliath: '🤖', thor: '🦾', ascendant: '🔮', executor: '⚡', reaver: '⚛️', swarm_host: '🦗', queen: '👑', primal_igniter: '🔥',
   // 전설
-  valkyrie: '💫', liberator: '☄️', guardian: '🐉', zergling_l: '🐜',
-  hydra_l: '🐍', immortal: '🔱', destroyer: '⚛️', hybrid: '👾',
+  valerius: '🎯', warfield: '🎖️', mojo: '🛩️', mohandar: '🔱', urun: '🌌', zagara: '🧫', torrasque: '🦏', mecha_ravager: '🧨',
   // 신
-  lurker: '🌵', ravager: '🧨', ultralisk: '🦏', high_templar: '🌀',
-  adept: '👤', carrier: '🛰️', science: '🔬', marauder_g: '🐻', spectre: '👻',
+  sam: '💣', tauren_marine: '🐂', duke: '🛡️', rasagal: '🛰️', malash: '🐲', vorazun: '🌒', impaler: '🩸', sliven: '🧪',
+  mobius_hybrid: '👾', raynor: '🔫', zeratul: '✴️', kukulza: '🦅',
 }
 
 const buildBlueprint = (d: TowerDef): TowerBlueprint => ({
