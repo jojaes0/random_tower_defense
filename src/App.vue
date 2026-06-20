@@ -59,6 +59,22 @@ watch(
   },
 )
 
+// 체력 손실 표시(붉은 플래시 + 떠오르는 -N)
+const lifeFlash = ref(0)
+const lifeMsgs = ref<{ id: number; amount: number }[]>([])
+let lifeMsgId = 0
+watch(
+  () => state.life,
+  (now, prev) => {
+    if (now < prev && state.round >= 1) {
+      lifeFlash.value++
+      const id = ++lifeMsgId
+      lifeMsgs.value.push({ id, amount: prev - now })
+      setTimeout(() => (lifeMsgs.value = lifeMsgs.value.filter((m) => m.id !== id)), 1300)
+    }
+  },
+)
+
 const nextRoundLabel = computed(() => {
   const next = state.round + 1
   if (!state.endless && next > BALANCE.totalRounds) return '완료'
@@ -69,6 +85,7 @@ const nextRoundLabel = computed(() => {
 const canStart = computed(() => state.phase === 'building' && (state.endless || state.round < BALANCE.totalRounds))
 const start = () => {
   buildMode.value = 'idle'
+  if (speed.value === 0) setSpeed(1) // 일시정지 상태면 해제
   engine.startNextRound()
 }
 
@@ -92,6 +109,12 @@ const menuAlert = computed(() => {
   <div class="app">
     <!-- 전체화면 맵 (배경) -->
     <GameField :engine="engine" :build-mode="buildMode" :hero-id="heroId" />
+
+    <!-- 체력 손실 플래시 -->
+    <div v-if="lifeFlash" :key="lifeFlash" class="life-vignette"></div>
+    <div class="life-msgs">
+      <div v-for="m in lifeMsgs" :key="m.id" class="life-msg">−{{ m.amount }} ♥</div>
+    </div>
 
     <!-- 보상/달성 토스트 -->
     <TransitionGroup name="toast" tag="div" class="toasts">
@@ -240,6 +263,13 @@ const menuAlert = computed(() => {
 <style scoped>
 .app { position: relative; height: 100dvh; width: 100%; overflow: hidden; background: #060a14; }
 
+/* 체력 손실 플래시 */
+.life-vignette { position: fixed; inset: 0; z-index: 35; pointer-events: none; box-shadow: inset 0 0 90px 24px rgba(239, 68, 68, 0.75); animation: lifeflash 0.55s ease-out forwards; }
+@keyframes lifeflash { from { opacity: 1; } to { opacity: 0; } }
+.life-msgs { position: fixed; top: 88px; left: 50%; transform: translateX(-50%); z-index: 36; pointer-events: none; display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.life-msg { color: #ef4444; font-weight: 800; font-size: 24px; text-shadow: 0 2px 6px #000, 0 0 10px rgba(239, 68, 68, 0.6); animation: lifeup 1.3s ease-out forwards; }
+@keyframes lifeup { 0% { opacity: 0; transform: translateY(12px) scale(0.8); } 15% { opacity: 1; transform: translateY(0) scale(1.15); } 100% { opacity: 0; transform: translateY(-34px); } }
+
 /* 토스트 */
 .toasts { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); z-index: 40; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: max-content; max-width: 92vw; }
 .toast { min-width: 230px; max-width: 92vw; padding: 10px 16px; border-radius: 10px; border: 1px solid; background: rgba(14, 22, 38, 0.95); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); text-align: center; }
@@ -287,7 +317,7 @@ const menuAlert = computed(() => {
 .preview .final-warn { margin-left: 6px; color: #f87171; font-weight: 700; }
 
 /* 선택 타워 정보 (우상단 오버레이) */
-.inspector-ov { position: absolute; top: 50px; right: 8px; z-index: 9; width: 190px; max-width: 62vw; background: rgba(14, 22, 38, 0.95); border: 1px solid #1f2d45; border-radius: 10px; padding: 10px; }
+.inspector-ov { position: absolute; top: 74px; right: 8px; z-index: 9; width: 190px; max-width: 62vw; background: rgba(14, 22, 38, 0.95); border: 1px solid #1f2d45; border-radius: 10px; padding: 10px; }
 .ins-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .ins-icon { font-size: 17px; }
 .ins-close { margin-left: auto; width: 20px; height: 20px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 5px; color: #94a3b8; cursor: pointer; font-size: 11px; }
