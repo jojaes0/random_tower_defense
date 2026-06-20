@@ -164,14 +164,14 @@ const toggleMenu = () => {
       <div class="chip kill"><span>킬</span><b>{{ state.killCount }}</b></div>
     </div>
 
-    <!-- 메시지 + 다음 라운드 미리보기 (오버레이) -->
+    <!-- 다음 라운드 미리보기 + 메시지 (오버레이, 세로 스택 — 항상 각자 줄) -->
     <div class="msgbar">
-      <span class="message">{{ state.message }}</span>
       <span v-if="preview && state.phase === 'building'" class="preview" :class="{ boss: preview.type === 'boss' }">
         다음 R{{ preview.round }}: <template v-if="preview.type === 'boss'">☠️</template><template v-else>잡몹×{{ preview.count }}</template> HP<b>{{ fmt(preview.hp) }}</b>
         <span v-if="state.autoStarted && state.nextRoundCountdown > 0" class="cd">⏱{{ Math.ceil(state.nextRoundCountdown) }}s</span>
         <span v-if="preview.round === BALANCE.totalRounds && !state.endless" class="final-warn">⚠️막으면 패배</span>
       </span>
+      <span class="message">{{ state.message }}</span>
     </div>
 
     <!-- 선택 타워 정보 (우상단 오버레이) -->
@@ -339,7 +339,7 @@ const toggleMenu = () => {
 .start:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
 
 /* 메시지/미리보기 오버레이 */
-.msgbar { position: absolute; top: 78px; left: 8px; right: 8px; z-index: 8; display: flex; gap: 8px; align-items: center; pointer-events: none; flex-wrap: wrap; }
+.msgbar { position: absolute; top: 74px; left: 8px; right: 8px; z-index: 8; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; pointer-events: none; }
 .message { color: #93c5fd; font-size: 12px; background: rgba(11, 18, 32, 0.75); padding: 2px 8px; border-radius: 6px; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .preview { font-size: 12px; color: #cbd5e1; background: rgba(11, 18, 32, 0.9); border: 1px solid #1f2d45; border-radius: 7px; padding: 2px 8px; white-space: nowrap; }
 .preview b { color: #fca5a5; margin-left: 2px; }
