@@ -6,7 +6,7 @@ import { BALANCE, DIFFICULTIES, RARITY_META } from '@/engine/balance'
 import { HERO_TOWERS, QUESTS, RACES } from '@/engine/content'
 import type { RaceId } from '@/engine/types'
 
-const { engine, state, speed, setSpeed, togglePause } = useGame()
+const { engine, state, speed, setSpeed, togglePause, resume } = useGame()
 
 const buildMode = ref<'idle' | 'common' | 'hero' | 'merge'>('idle')
 const heroId = ref<string | null>(null)
@@ -85,7 +85,7 @@ const nextRoundLabel = computed(() => {
 const canStart = computed(() => state.phase === 'building' && (state.endless || state.round < BALANCE.totalRounds))
 const start = () => {
   buildMode.value = 'idle'
-  if (speed.value === 0) setSpeed(1) // 일시정지 상태면 해제
+  resume() // 일시정지면 직전 배속으로 복귀
   engine.startNextRound()
 }
 

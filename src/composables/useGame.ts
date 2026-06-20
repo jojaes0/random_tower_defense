@@ -9,8 +9,22 @@ export const useGame = () => {
 
   /** 0 = 일시정지, 1/2/3 = 배속 */
   const speed = ref(1)
-  const setSpeed = (s: number) => (speed.value = s)
-  const togglePause = () => (speed.value = speed.value === 0 ? 1 : 0)
+  let prevSpeed = 1 // 일시정지 직전 배속 기억
+  const setSpeed = (s: number) => {
+    if (s > 0) prevSpeed = s
+    speed.value = s
+  }
+  const togglePause = () => {
+    if (speed.value === 0) speed.value = prevSpeed
+    else {
+      prevSpeed = speed.value
+      speed.value = 0
+    }
+  }
+  /** 일시정지면 직전 배속으로 복귀 */
+  const resume = () => {
+    if (speed.value === 0) speed.value = prevSpeed
+  }
 
   let raf = 0
   let last = performance.now()
@@ -26,5 +40,5 @@ export const useGame = () => {
 
   onUnmounted(() => cancelAnimationFrame(raf))
 
-  return { engine, state: engine.state, speed, setSpeed, togglePause }
+  return { engine, state: engine.state, speed, setSpeed, togglePause, resume }
 }
