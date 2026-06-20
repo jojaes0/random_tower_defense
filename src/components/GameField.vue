@@ -378,25 +378,42 @@ const draw = () => {
     }
   }
 
-  // 소환 미니언(식충): 작은 저그 생물체
+  // 소환 미니언(식충): 작은 저그 생물체. 소멸 마지막 ~2초는 점멸+축소+흩어지는 입자로 "소멸 중" 표시
+  const DESPAWN = 2 // 소멸 연출 시간(초)
   for (const m of s.minions) {
-    const a = Math.min(1, m.life / 1.2) // 소멸 직전 페이드아웃
+    const dying = m.life < DESPAWN
+    const k = dying ? m.life / DESPAWN : 1 // 1→0
+    // 점멸(소멸 중에만): 빠르게 깜빡여 "사라지는 중"임을 인지시킴
+    const blink = dying ? 0.45 + 0.55 * Math.abs(Math.sin(now / 70)) : 1
+    const scale = 0.6 + 0.4 * k // 축소
     ctx.save()
-    ctx.globalAlpha = a
+    ctx.globalAlpha = k * blink
     ctx.fillStyle = '#ec4899'
     ctx.strokeStyle = '#9d174d'
     ctx.lineWidth = 1
     ctx.beginPath()
-    ctx.ellipse(m.pos.x, m.pos.y, 4, 3, 0, 0, Math.PI * 2)
+    ctx.ellipse(m.pos.x, m.pos.y, 4 * scale, 3 * scale, 0, 0, Math.PI * 2)
     ctx.fill()
     ctx.stroke()
     // 다리/가시
     ctx.beginPath()
-    ctx.moveTo(m.pos.x - 4, m.pos.y)
-    ctx.lineTo(m.pos.x - 6, m.pos.y - 3)
-    ctx.moveTo(m.pos.x + 4, m.pos.y)
-    ctx.lineTo(m.pos.x + 6, m.pos.y - 3)
+    ctx.moveTo(m.pos.x - 4 * scale, m.pos.y)
+    ctx.lineTo(m.pos.x - 6 * scale, m.pos.y - 3 * scale)
+    ctx.moveTo(m.pos.x + 4 * scale, m.pos.y)
+    ctx.lineTo(m.pos.x + 6 * scale, m.pos.y - 3 * scale)
     ctx.stroke()
+    // 흩어지는 입자(소멸 중) — 위로 퍼지며 사라짐
+    if (dying) {
+      ctx.fillStyle = '#f9a8d4'
+      for (let i = 0; i < 4; i++) {
+        const a = (Math.PI * 2 * i) / 4 + now / 400
+        const spread = (1 - k) * 9
+        ctx.globalAlpha = k * 0.8
+        ctx.beginPath()
+        ctx.arc(m.pos.x + Math.cos(a) * spread, m.pos.y + Math.sin(a) * spread - (1 - k) * 4, 1.2 * k + 0.3, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
     ctx.restore()
   }
 
