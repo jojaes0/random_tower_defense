@@ -21,6 +21,14 @@ let ch = 0
 let dpr = 1
 let raf = 0
 
+// 관성(부드러운 화면 이동): 드래그 속도 → 놓으면 감속하며 미끄러짐
+let lastMoveVX = 0
+let lastMoveVY = 0
+let momVX = 0
+let momVY = 0
+let momentum = false
+const FRICTION = 0.9
+
 const MINS = { s: 0.4 }
 const MAXS = { s: 6 }
 
@@ -72,11 +80,13 @@ let lastDist = 0
 const onPointerDown = (e: PointerEvent) => {
   canvasRef.value!.setPointerCapture(e.pointerId)
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+  momentum = false // 새 터치 시 관성 멈춤
   if (pointers.size === 1) {
     gesture = 'pan'
     downX = e.clientX
     downY = e.clientY
     moved = false
+    lastMoveVX = lastMoveVY = 0
   } else if (pointers.size === 2) {
     gesture = 'pinch'
     const [p1, p2] = [...pointers.values()]
@@ -100,20 +110,33 @@ const onPointerMove = (e: PointerEvent) => {
     if (lastDist > 0) zoomAround(mx, my, d / lastDist)
     lastDist = d
   } else if (gesture === 'pan') {
-    view.tx += e.clientX - prev.x
-    view.ty += e.clientY - prev.y
+    const dx = e.clientX - prev.x
+    const dy = e.clientY - prev.y
+    view.tx += dx
+    view.ty += dy
+    lastMoveVX = dx
+    lastMoveVY = dy
     if (Math.hypot(e.clientX - downX, e.clientY - downY) > 7) moved = true
   }
 }
 const onPointerUp = (e: PointerEvent) => {
-  const wasTap = gesture === 'pan' && !moved && pointers.size === 1
+  const sizeBefore = pointers.size
+  const wasTap = gesture === 'pan' && !moved && sizeBefore === 1
+  const wasPan = gesture === 'pan' && moved && sizeBefore === 1
   pointers.delete(e.pointerId)
   if (wasTap) handleTap(e.clientX, e.clientY)
+  if (wasPan && pointers.size === 0) {
+    // 놓는 순간의 속도로 관성 시작
+    momVX = lastMoveVX
+    momVY = lastMoveVY
+    momentum = Math.hypot(momVX, momVY) > 0.4
+  }
   gesture = pointers.size === 2 ? 'pinch' : pointers.size === 1 ? 'pan' : 'none'
   if (pointers.size < 2) lastDist = 0
 }
 const onWheel = (e: WheelEvent) => {
   e.preventDefault()
+  momentum = false
   const rect = canvasRef.value!.getBoundingClientRect()
   zoomAround(e.clientX - rect.left, e.clientY - rect.top, e.deltaY < 0 ? 1.12 : 1 / 1.12)
 }
@@ -156,6 +179,15 @@ const draw = () => {
   const ctx = c.getContext('2d')!
   const s = props.engine.state
   const now = performance.now()
+
+  // 관성 이동(부드러운 감속)
+  if (momentum && gesture === 'none') {
+    view.tx += momVX
+    view.ty += momVY
+    momVX *= FRICTION
+    momVY *= FRICTION
+    if (Math.hypot(momVX, momVY) < 0.15) momentum = false
+  }
 
   // 배경(화면 전체)
   ctx.setTransform(1, 0, 0, 1, 0, 0)
