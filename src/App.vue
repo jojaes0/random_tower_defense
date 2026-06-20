@@ -266,7 +266,7 @@ const toggleMenu = () => {
     <div v-if="state.phase === 'select-difficulty'" class="overlay">
       <div class="modal">
         <h2>난이도 선택</h2>
-        <p class="muted">실제 RTD는 300~500% 체력. 지옥은 목숨 5 + 시작 보너스.</p>
+        <p class="muted">%가 높을수록 적 체력이 많아 어렵습니다. 어려움(500%)이 실제 랜타디 표준이고, 쉬움·보통은 체력을 줄인 버전입니다.</p>
         <div class="diff-grid">
           <button v-for="d in DIFFICULTIES" :key="d.id" class="diff-card" @click="engine.chooseDifficulty(d.id)"><b>{{ d.name }}</b><p>{{ d.desc }}</p></button>
         </div>
