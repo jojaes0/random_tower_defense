@@ -79,9 +79,8 @@ watch(
 const nextRoundLabel = computed(() => {
   const next = state.round + 1
   if (!state.endless && next > BALANCE.totalRounds) return '완료'
-  const cd = state.nextRoundCountdown > 0 ? ` (${Math.ceil(state.nextRoundCountdown)}s)` : ''
   if (!state.autoStarted) return `R${next} 시작${next % BALANCE.bossEvery === 0 ? ' ☠' : ''}`
-  return `지금 시작${cd}`
+  return '지금 시작' // 카운트다운은 버튼 아래(start-cd)에서 표시
 })
 const canStart = computed(() => state.phase === 'building' && (state.endless || state.round < BALANCE.totalRounds))
 const start = () => {
