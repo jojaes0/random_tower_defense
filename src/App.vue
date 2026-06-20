@@ -12,6 +12,7 @@ const buildMode = ref<'idle' | 'common' | 'hero' | 'merge'>('idle')
 const heroId = ref<string | null>(null)
 const showMenu = ref(false)
 const tab = ref<'mission' | 'terrazine' | 'quest'>('mission')
+const dockOpen = ref(true)
 
 const setCommon = () => {
   buildMode.value = buildMode.value === 'common' ? 'idle' : 'common'
@@ -28,11 +29,10 @@ const selectHero = (id: string) => {
   } else {
     buildMode.value = 'hero'
     heroId.value = id
-    showMenu.value = false // 필드 클릭으로 배치할 수 있게 메뉴 닫기
+    showMenu.value = false
   }
 }
 
-// 보상/달성 토스트 자동 사라짐
 const scheduled = new Set<number>()
 watch(
   () => state.notifications.map((n) => n.id).join(','),
@@ -48,7 +48,6 @@ watch(
   },
 )
 
-// 더 이상 지을 수 없으면 건설 모드 자동 해제 → 타워 선택/합성 가능
 watch(
   () => [state.minerals, state.terrazine, buildMode.value],
   () => {
@@ -84,11 +83,9 @@ const roundLabel = computed(() => (state.endless ? `${state.round} ∞` : `${sta
 const fmt = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : `${Math.round(n)}`)
 const preview = computed(() => engine.nextRoundPreview())
 
-// 메뉴 알림 뱃지(사용 가능한 행동이 있으면 표시)
 const menuAlert = computed(() => {
   const canMission = state.missions.some((m) => !m.active && m.cooldownRemaining <= 0)
-  const canTerra = state.terrazine >= 1
-  return canMission || canTerra
+  return canMission || state.terrazine >= 1
 })
 const openTab = (t: typeof tab.value) => {
   tab.value = t
@@ -98,6 +95,9 @@ const openTab = (t: typeof tab.value) => {
 
 <template>
   <div class="app">
+    <!-- 전체화면 맵 (배경) -->
+    <GameField :engine="engine" :build-mode="buildMode" :hero-id="heroId" />
+
     <!-- 보상/달성 토스트 -->
     <TransitionGroup name="toast" tag="div" class="toasts">
       <div v-for="n in state.notifications" :key="n.id" class="toast" :class="n.kind">
@@ -106,93 +106,84 @@ const openTab = (t: typeof tab.value) => {
       </div>
     </TransitionGroup>
 
-    <!-- 상단바 -->
+    <!-- 상단바 (오버레이) : 좌측=메뉴+스탯 / 우측=배속+시작 -->
     <header class="topbar">
-      <button class="menu-btn" :class="{ alert: menuAlert }" @click="showMenu = !showMenu">☰</button>
-      <div class="stats">
-        <div class="chip"><span>R</span><b>{{ roundLabel }}</b></div>
-        <div class="chip life"><span>♥</span><b>{{ state.life }}</b></div>
-        <div class="chip mineral"><span>미네랄</span><b>{{ state.minerals }}</b></div>
-        <div class="chip gas"><span>가스</span><b>{{ state.gas }}</b></div>
-        <div class="chip terra"><span>◆</span><b>{{ state.terrazine }}</b></div>
-        <div class="chip kill"><span>킬</span><b>{{ state.killCount }}</b></div>
-        <div class="chip time"><span>⏱</span><b>{{ mmss(state.elapsed) }}</b></div>
+      <div class="bar-left">
+        <button class="menu-btn" :class="{ alert: menuAlert }" @click="showMenu = !showMenu">☰</button>
+        <div class="stats">
+          <div class="chip"><span>R</span><b>{{ roundLabel }}</b></div>
+          <div class="chip life"><span>♥</span><b>{{ state.life }}</b></div>
+          <div class="chip mineral"><span>미네랄</span><b>{{ state.minerals }}</b></div>
+          <div class="chip gas"><span>가스</span><b>{{ state.gas }}</b></div>
+          <div class="chip terra"><span>◆</span><b>{{ state.terrazine }}</b></div>
+          <div class="chip time"><span>⏱</span><b>{{ mmss(state.elapsed) }}</b></div>
+        </div>
       </div>
-      <div class="speed">
-        <button :class="{ on: speed === 0 }" @click="togglePause">⏸</button>
-        <button :class="{ on: speed === 1 }" @click="setSpeed(1)">1</button>
-        <button :class="{ on: speed === 2 }" @click="setSpeed(2)">2</button>
-        <button :class="{ on: speed === 3 }" @click="setSpeed(3)">3</button>
+      <div class="bar-right">
+        <div class="speed">
+          <button :class="{ on: speed === 0 }" @click="togglePause">⏸</button>
+          <button :class="{ on: speed === 1 }" @click="setSpeed(1)">1</button>
+          <button :class="{ on: speed === 2 }" @click="setSpeed(2)">2</button>
+          <button :class="{ on: speed === 3 }" @click="setSpeed(3)">3</button>
+        </div>
+        <button class="start" :disabled="!canStart" @click="start">{{ state.phase === 'wave' ? '진행중' : nextRoundLabel }}</button>
       </div>
-      <button class="start" :disabled="!canStart" @click="start">{{ state.phase === 'wave' ? '진행중' : nextRoundLabel }}</button>
     </header>
 
-    <div class="msgrow">
-      <div class="message">{{ state.message }}</div>
-      <div v-if="preview && state.phase === 'building'" class="preview" :class="{ boss: preview.type === 'boss' }">
-        다음 R{{ preview.round }}:
-        <template v-if="preview.type === 'boss'">☠️ 보스</template>
-        <template v-else>잡몹 ×{{ preview.count }}</template>
-        · HP <b>{{ fmt(preview.hp) }}</b>
-        <span v-if="state.autoStarted && state.nextRoundCountdown > 0" class="cd">⏱ {{ Math.ceil(state.nextRoundCountdown) }}s 후 자동</span>
-        <span v-else-if="!state.autoStarted" class="cd manual">수동 시작 대기</span>
-        <span v-if="preview.round === BALANCE.totalRounds && !state.endless" class="final-warn">⚠️ 최종 보스 — 막지 못하면 즉시 패배</span>
-      </div>
+    <!-- 메시지 + 다음 라운드 미리보기 (오버레이) -->
+    <div class="msgbar">
+      <span class="message">{{ state.message }}</span>
+      <span v-if="preview && state.phase === 'building'" class="preview" :class="{ boss: preview.type === 'boss' }">
+        다음 R{{ preview.round }}: <template v-if="preview.type === 'boss'">☠️</template><template v-else>잡몹×{{ preview.count }}</template> HP<b>{{ fmt(preview.hp) }}</b>
+        <span v-if="state.autoStarted && state.nextRoundCountdown > 0" class="cd">⏱{{ Math.ceil(state.nextRoundCountdown) }}s</span>
+        <span v-if="preview.round === BALANCE.totalRounds && !state.endless" class="final-warn">⚠️막으면 패배</span>
+      </span>
     </div>
 
-    <!-- 메인: 필드 + 도크 -->
-    <main class="stage">
-      <div class="field-area">
-        <GameField :engine="engine" :build-mode="buildMode" :hero-id="heroId" />
+    <!-- 우측 도크 (오버레이, 접기 가능) -->
+    <button v-if="!dockOpen" class="dock-tab" @click="dockOpen = true">‹</button>
+    <aside v-show="dockOpen" class="dock">
+      <button class="dock-collapse" @click="dockOpen = false">›</button>
+
+      <div class="dock-build">
+        <button class="dbtn" :class="{ active: buildMode === 'common' }" :disabled="state.minerals < BALANCE.towerCost" @click="setCommon">🎲 일반 타워<small>{{ BALANCE.towerCost }}</small></button>
+        <button class="dbtn" :class="{ active: buildMode === 'merge' }" @click="setMerge">⚙ 합성 모드<small>2개 합성</small></button>
+        <button class="dbtn" :disabled="state.minerals < BALANCE.gasExchangeCost" @click="engine.gambleGas()">⛽ 가스 도박<small>{{ BALANCE.gasExchangeCost }}</small></button>
       </div>
 
-      <aside class="dock">
-        <div class="dock-build">
-          <button class="dbtn" :class="{ active: buildMode === 'common' }" :disabled="state.minerals < BALANCE.towerCost" @click="setCommon">
-            🎲 일반 타워<small>{{ BALANCE.towerCost }}</small>
-          </button>
-          <button class="dbtn" :class="{ active: buildMode === 'merge' }" @click="setMerge">
-            ⚙ 합성 모드<small>2개 합성</small>
-          </button>
-          <button class="dbtn gas" :disabled="state.minerals < BALANCE.gasExchangeCost" @click="engine.gambleGas()">
-            ⛽ 가스 도박<small>{{ BALANCE.gasExchangeCost }}</small>
-          </button>
-        </div>
+      <div class="dock-upg">
+        <div class="dock-label">업그레이드 <span class="muted">가스 {{ state.gas }}</span></div>
+        <button v-for="r in RACES" :key="r.id" class="upgb" :disabled="state.gas < engine.upgradeCost(r.id)" @click="engine.buyUpgrade(r.id)">
+          <span class="upgb-r" :style="{ color: r.color }">{{ r.short }}</span>
+          <span class="upgb-lv">Lv.{{ state.upgrades[r.id] }} · +{{ upgPct(r.id) }}%</span>
+          <span class="upgb-cost">▲{{ engine.upgradeCost(r.id) }}</span>
+        </button>
+      </div>
 
-        <div class="dock-upg">
-          <div class="dock-label">업그레이드 <span class="muted">가스 {{ state.gas }}</span></div>
-          <button v-for="r in RACES" :key="r.id" class="upgb" :disabled="state.gas < engine.upgradeCost(r.id)" @click="engine.buyUpgrade(r.id)">
-            <span class="upgb-r" :style="{ color: r.color }">{{ r.short }}</span>
-            <span class="upgb-lv">Lv.{{ state.upgrades[r.id] }} · +{{ upgPct(r.id) }}%</span>
-            <span class="upgb-cost">▲{{ engine.upgradeCost(r.id) }}</span>
-          </button>
+      <div class="inspector" v-if="sel && selStats">
+        <div class="ins-name" :style="{ color: sel.blueprint.color }">
+          <span class="ins-icon">{{ sel.blueprint.icon }}</span>{{ sel.blueprint.name }}
+          <span class="badge" :style="{ background: RARITY_META[sel.blueprint.rarity].color }">{{ RARITY_META[sel.blueprint.rarity].label }}</span>
         </div>
+        <div class="ins-sub">{{ RACES.find((r) => r.id === sel!.blueprint.race)?.name }} · {{ roleLabel(sel.blueprint.role) }}</div>
+        <p v-if="sel.blueprint.skillDesc" class="skill">✦ {{ sel.blueprint.skillDesc }}<span v-if="sel.dmgBonusMul > 1"> ×{{ sel.dmgBonusMul.toFixed(0) }}</span></p>
+        <ul class="ins-stats">
+          <li><span>DPS</span><b>{{ (selStats.damage * selStats.attackSpeed).toFixed(0) }}</b></li>
+          <li><span>사거리</span><b>{{ selStats.range.toFixed(0) }}</b></li>
+          <li><span>범위</span><b>{{ selStats.splashRadius > 0 ? selStats.splashRadius.toFixed(0) : '단일' }}</b></li>
+          <li><span>보스</span><b>×{{ selStats.bonusVsBoss.toFixed(1) }}</b></li>
+        </ul>
+        <button class="merge" :disabled="!partner" @click="engine.mergeTower(sel.uid)">{{ partner ? '⚙ 합성!' : '합성 불가' }}</button>
+        <button class="sell" @click="engine.sellTower(sel.uid)">판매 +{{ Math.round(BALANCE.towerCost * BALANCE.sellRatio) }}</button>
+      </div>
+      <p v-else class="dock-hint">타워를 탭하면 정보·합성.</p>
 
-        <div class="inspector" v-if="sel && selStats">
-          <div class="ins-name" :style="{ color: sel.blueprint.color }">
-            <span class="ins-icon">{{ sel.blueprint.icon }}</span>{{ sel.blueprint.name }}
-            <span class="badge" :style="{ background: RARITY_META[sel.blueprint.rarity].color }">{{ RARITY_META[sel.blueprint.rarity].label }}</span>
-          </div>
-          <div class="ins-sub">{{ RACES.find((r) => r.id === sel!.blueprint.race)?.name }} · {{ roleLabel(sel.blueprint.role) }}</div>
-          <p v-if="sel.blueprint.skillDesc" class="skill">✦ {{ sel.blueprint.skillDesc }}<span v-if="sel.dmgBonusMul > 1"> ×{{ sel.dmgBonusMul.toFixed(0) }}</span></p>
-          <ul class="ins-stats">
-            <li><span>DPS</span><b>{{ (selStats.damage * selStats.attackSpeed).toFixed(0) }}</b></li>
-            <li><span>사거리</span><b>{{ selStats.range.toFixed(0) }}</b></li>
-            <li><span>범위</span><b>{{ selStats.splashRadius > 0 ? selStats.splashRadius.toFixed(0) : '단일' }}</b></li>
-            <li><span>보스</span><b>×{{ selStats.bonusVsBoss.toFixed(1) }}</b></li>
-          </ul>
-          <button class="merge" :disabled="!partner" @click="engine.mergeTower(sel.uid)">{{ partner ? '⚙ 합성!' : '합성 불가' }}</button>
-          <button class="sell" @click="engine.sellTower(sel.uid)">판매 +{{ Math.round(BALANCE.towerCost * BALANCE.sellRatio) }}</button>
-        </div>
-        <p v-else class="dock-hint">타워를 탭하면 정보·합성이 표시됩니다.</p>
-
-        <div class="dock-menu">
-          <button @click="openTab('mission')">🎯 개인미션</button>
-          <button @click="openTab('terrazine')">◆ 테라진</button>
-          <button @click="openTab('quest')">📜 퀘스트</button>
-        </div>
-      </aside>
-    </main>
+      <div class="dock-menu">
+        <button @click="openTab('mission')">🎯 미션</button>
+        <button @click="openTab('terrazine')">◆ 테라진</button>
+        <button @click="openTab('quest')">📜 퀘스트</button>
+      </div>
+    </aside>
 
     <!-- 드로어 메뉴 -->
     <div v-if="showMenu" class="drawer-backdrop" @click.self="showMenu = false">
@@ -205,39 +196,25 @@ const openTab = (t: typeof tab.value) => {
           </div>
           <button class="drawer-close" @click="showMenu = false">✕</button>
         </div>
-
         <div class="drawer-body">
-          <!-- 개인미션 -->
           <div v-if="tab === 'mission'">
             <p class="d-help">보스몹을 소환해 처치하면 미네랄 보상. 출구로 빠지면 목숨 -1.</p>
-            <button
-              v-for="m in state.missions"
-              :key="m.id"
-              class="mission-btn"
-              :disabled="m.active || m.cooldownRemaining > 0 || state.phase === 'select-difficulty'"
-              @click="engine.triggerMission(m.id)"
-            >
+            <button v-for="m in state.missions" :key="m.id" class="mission-btn" :disabled="m.active || m.cooldownRemaining > 0 || state.phase === 'select-difficulty'" @click="engine.triggerMission(m.id)">
               <b>[{{ m.key }}] {{ m.name }}</b>
               <small v-if="m.active">진행 중…</small>
               <small v-else-if="m.cooldownRemaining > 0">쿨다운 {{ Math.ceil(m.cooldownRemaining) }}s</small>
               <small v-else>+{{ m.reward }} 미네랄 (클리어 {{ m.clears }})</small>
             </button>
           </div>
-
-          <!-- 테라진 -->
           <div v-if="tab === 'terrazine'">
             <p class="d-help">보유 테라진 ◆ {{ state.terrazine }} — 보스/퀘스트로 획득.</p>
             <button class="mini wide" :disabled="state.terrazine < 1" @click="engine.terrazineToMinerals()">→ 미네랄 +{{ BALANCE.terrazineToMinerals }} (◆1)</button>
             <button class="mini wide" :disabled="state.terrazine < 1" @click="engine.terrazineToGas()">→ 가스 +{{ BALANCE.terrazineToGas }} (◆1)</button>
-            <p class="d-help" style="margin-top: 12px">영웅 선택권 — ◆1 + {{ BALANCE.heroPickMineralCost }}원 (선택 후 필드 클릭)</p>
+            <p class="d-help" style="margin-top: 12px">영웅 선택권 — ◆1 + {{ BALANCE.heroPickMineralCost }}원 (선택 후 맵 탭)</p>
             <div class="hero-grid">
-              <button v-for="h in HERO_TOWERS" :key="h.id" class="hero-btn" :class="{ active: heroId === h.id }" :disabled="state.terrazine < 1 || state.minerals < BALANCE.heroPickMineralCost" @click="selectHero(h.id)">
-                {{ h.icon }} {{ h.name }}
-              </button>
+              <button v-for="h in HERO_TOWERS" :key="h.id" class="hero-btn" :class="{ active: heroId === h.id }" :disabled="state.terrazine < 1 || state.minerals < BALANCE.heroPickMineralCost" @click="selectHero(h.id)">{{ h.icon }} {{ h.name }}</button>
             </div>
           </div>
-
-          <!-- 퀘스트 -->
           <div v-if="tab === 'quest'">
             <ul class="quest-list">
               <li v-for="q in QUESTS" :key="q.id" :class="{ done: state.questsDone[q.id] }">
@@ -256,9 +233,7 @@ const openTab = (t: typeof tab.value) => {
         <h2>난이도 선택</h2>
         <p class="muted">실제 RTD는 300~500% 체력. 지옥은 목숨 5 + 시작 보너스.</p>
         <div class="diff-grid">
-          <button v-for="d in DIFFICULTIES" :key="d.id" class="diff-card" @click="engine.chooseDifficulty(d.id)">
-            <b>{{ d.name }}</b><p>{{ d.desc }}</p>
-          </button>
+          <button v-for="d in DIFFICULTIES" :key="d.id" class="diff-card" @click="engine.chooseDifficulty(d.id)"><b>{{ d.name }}</b><p>{{ d.desc }}</p></button>
         </div>
       </div>
     </div>
@@ -279,12 +254,12 @@ const openTab = (t: typeof tab.value) => {
 </template>
 
 <style scoped>
-.app { display: flex; flex-direction: column; height: 100dvh; max-width: 1340px; margin: 0 auto; padding: 6px 8px; gap: 4px; }
+.app { position: relative; height: 100dvh; width: 100%; overflow: hidden; background: #060a14; }
 
 /* 토스트 */
-.toasts { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 40; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: max-content; max-width: 92vw; }
-.toast { min-width: 240px; max-width: 92vw; padding: 11px 16px; border-radius: 10px; border: 1px solid; background: #0e1626; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); text-align: center; }
-.toast.quest { border-color: #fbbf24; box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5); }
+.toasts { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); z-index: 40; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: max-content; max-width: 92vw; }
+.toast { min-width: 230px; max-width: 92vw; padding: 10px 16px; border-radius: 10px; border: 1px solid; background: rgba(14, 22, 38, 0.95); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); text-align: center; }
+.toast.quest { border-color: #fbbf24; }
 .toast.boss { border-color: #ef4444; }
 .toast.mission { border-color: #f97316; }
 .toast-title { font-weight: 800; font-size: 14px; }
@@ -298,54 +273,53 @@ const openTab = (t: typeof tab.value) => {
 .toast-leave-to { opacity: 0; transform: translateY(-14px); }
 .toast-move { transition: transform 0.3s ease; }
 
-/* 상단바 */
-.topbar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #111a2e; border: 1px solid #1f2d45; border-radius: 8px; flex-shrink: 0; }
+/* 상단바 오버레이 */
+.topbar { position: absolute; top: 0; left: 0; right: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; background: linear-gradient(#0b1220ee, #0b122099); }
+.bar-left { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.bar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .menu-btn { position: relative; width: 36px; height: 32px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 7px; color: #e2e8f0; font-size: 16px; cursor: pointer; flex-shrink: 0; }
 .menu-btn.alert::after { content: ''; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; background: #22c55e; border-radius: 50%; }
-.stats { display: flex; gap: 5px; flex: 1; overflow-x: auto; }
-.chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: #0b1220; border-radius: 7px; border: 1px solid #1f2d45; white-space: nowrap; }
+.stats { display: flex; gap: 5px; overflow-x: auto; min-width: 0; }
+.chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: rgba(11, 18, 32, 0.9); border-radius: 7px; border: 1px solid #1f2d45; white-space: nowrap; }
 .chip span { font-size: 10px; color: #8aa0c0; }
 .chip b { font-size: 13px; }
 .chip.life b { color: #ef4444; }
 .chip.mineral b { color: #67e8f9; }
 .chip.gas b { color: #86efac; }
 .chip.terra b { color: #fbbf24; }
-.speed { display: flex; gap: 3px; flex-shrink: 0; }
+.speed { display: flex; gap: 3px; }
 .speed button { width: 28px; height: 30px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 6px; color: #cbd5e1; cursor: pointer; font-size: 12px; }
 .speed button.on { background: #2563eb; border-color: #2563eb; color: #fff; }
-.start { padding: 8px 12px; font-weight: 700; font-size: 13px; background: #2563eb; border: none; border-radius: 7px; color: #fff; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.start { padding: 8px 12px; font-weight: 700; font-size: 13px; background: #2563eb; border: none; border-radius: 7px; color: #fff; cursor: pointer; white-space: nowrap; }
 .start:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
-.msgrow { display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding: 0 4px; min-height: 18px; }
-.message { color: #93c5fd; font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.preview { font-size: 12px; color: #cbd5e1; background: #0b1220; border: 1px solid #1f2d45; border-radius: 7px; padding: 3px 9px; white-space: nowrap; }
-.preview b { color: #fca5a5; }
+
+/* 메시지/미리보기 오버레이 */
+.msgbar { position: absolute; top: 46px; left: 8px; right: 8px; z-index: 9; display: flex; gap: 8px; align-items: center; pointer-events: none; flex-wrap: wrap; }
+.message { color: #93c5fd; font-size: 12px; background: rgba(11, 18, 32, 0.75); padding: 2px 8px; border-radius: 6px; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preview { font-size: 12px; color: #cbd5e1; background: rgba(11, 18, 32, 0.9); border: 1px solid #1f2d45; border-radius: 7px; padding: 2px 8px; white-space: nowrap; }
+.preview b { color: #fca5a5; margin-left: 2px; }
 .preview.boss { border-color: #7f1d1d; }
-.preview.boss b { color: #ef4444; }
-.preview .cd { margin-left: 8px; color: #fbbf24; }
-.preview .cd.manual { color: #64748b; }
-.preview .final-warn { margin-left: 8px; color: #f87171; font-weight: 700; }
+.preview .cd { margin-left: 6px; color: #fbbf24; }
+.preview .final-warn { margin-left: 6px; color: #f87171; font-weight: 700; }
 
-/* 메인 */
-.stage { flex: 1; min-height: 0; display: flex; gap: 8px; }
-.field-area { flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; }
-.dock { width: 220px; flex-shrink: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-
+/* 도크 오버레이 */
+.dock-tab { position: absolute; top: 50%; right: 0; transform: translateY(-50%); z-index: 11; width: 22px; height: 60px; background: rgba(17, 26, 46, 0.92); border: 1px solid #1f2d45; border-right: none; border-radius: 8px 0 0 8px; color: #cbd5e1; cursor: pointer; }
+.dock { position: absolute; top: 74px; right: 8px; bottom: 8px; width: 200px; z-index: 8; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 8px; background: rgba(11, 18, 32, 0.92); border: 1px solid #1f2d45; border-radius: 12px; }
+.dock-collapse { align-self: flex-end; width: 26px; height: 24px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 6px; color: #cbd5e1; cursor: pointer; margin-bottom: -2px; }
 .dock-build { display: flex; flex-direction: column; gap: 6px; }
 .dbtn { text-align: left; padding: 9px 10px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 8px; color: #e2e8f0; cursor: pointer; font-size: 13px; }
 .dbtn small { float: right; color: #8aa0c0; }
 .dbtn.active { border-color: #60a5fa; background: #15233f; }
-.dbtn.gas.active { border-color: #86efac; }
 .dbtn:disabled { opacity: 0.45; cursor: not-allowed; }
-
 .dock-upg { display: flex; flex-direction: column; gap: 5px; }
 .dock-label { font-size: 11px; color: #cbd5e1; display: flex; justify-content: space-between; }
+.muted { color: #64748b; font-weight: 400; }
 .upgb { display: flex; align-items: center; gap: 6px; padding: 7px 9px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 7px; color: #e2e8f0; cursor: pointer; font-size: 12px; }
 .upgb-r { font-weight: 700; width: 14px; }
 .upgb-lv { flex: 1; color: #cbd5e1; }
 .upgb-cost { color: #86efac; }
 .upgb:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.inspector { background: #111a2e; border: 1px solid #1f2d45; border-radius: 8px; padding: 10px; }
+.inspector { background: #0e1626; border: 1px solid #1f2d45; border-radius: 8px; padding: 10px; }
 .ins-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .ins-icon { font-size: 17px; }
 .badge { font-size: 10px; color: #0b1220; padding: 1px 5px; border-radius: 5px; font-weight: 700; }
@@ -357,8 +331,7 @@ const openTab = (t: typeof tab.value) => {
 .merge { width: 100%; padding: 8px; margin-bottom: 5px; background: #0e7490; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; }
 .merge:disabled { background: #1e293b; color: #64748b; cursor: not-allowed; }
 .sell { width: 100%; padding: 7px; background: #7f1d1d; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 12px; }
-.dock-hint { font-size: 11px; color: #64748b; padding: 8px; background: #111a2e; border: 1px dashed #1f2d45; border-radius: 8px; }
-
+.dock-hint { font-size: 11px; color: #64748b; padding: 6px; }
 .dock-menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: auto; }
 .dock-menu button { padding: 9px 2px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 7px; color: #cbd5e1; cursor: pointer; font-size: 11px; }
 
@@ -372,9 +345,6 @@ const openTab = (t: typeof tab.value) => {
 .drawer-close { width: 32px; height: 32px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 7px; color: #cbd5e1; cursor: pointer; }
 .drawer-body { padding: 12px; overflow-y: auto; }
 .d-help { font-size: 11px; color: #8aa0c0; margin: 0 0 10px; line-height: 1.5; }
-.upg-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid #1f2d45; }
-.upg-info { flex: 1; display: flex; flex-direction: column; font-size: 13px; }
-.upg-lv { color: #86efac; font-size: 11px; }
 .mini { padding: 8px 10px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 6px; color: #e2e8f0; cursor: pointer; font-size: 12px; }
 .mini.wide { width: 100%; margin-top: 6px; text-align: left; }
 .mini:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -392,13 +362,12 @@ const openTab = (t: typeof tab.value) => {
 .q-prog { color: #86efac; }
 .q-reward { font-size: 11px; color: #8aa0c0; }
 
-/* 오버레이 */
+/* 오버레이(모달) */
 .overlay { position: fixed; inset: 0; background: rgba(2, 6, 16, 0.85); display: flex; align-items: center; justify-content: center; z-index: 30; padding: 12px; }
 .modal { background: #111a2e; border: 1px solid #1f2d45; border-radius: 14px; padding: 22px 24px; text-align: center; max-width: 560px; width: 100%; }
 .modal h2 { margin-top: 0; }
 .modal h2.won { color: #22c55e; }
 .modal h2.lost { color: #ef4444; }
-.muted { color: #64748b; }
 .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
 .diff-card { padding: 14px 12px; background: #0b1220; border: 2px solid #1f2d45; border-radius: 12px; cursor: pointer; color: #e2e8f0; text-align: left; }
 .diff-card:hover { border-color: #2563eb; }
@@ -406,15 +375,4 @@ const openTab = (t: typeof tab.value) => {
 .diff-card p { font-size: 12px; color: #8aa0c0; margin: 6px 0 0; }
 .modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
 .reset { padding: 10px; background: #334155; border: none; border-radius: 8px; color: #e2e8f0; cursor: pointer; font-weight: 600; }
-
-/* 좁은 화면(모바일 가로) */
-@media (max-width: 760px) {
-  .dock { width: 168px; }
-  .stats { max-width: 40vw; }
-  .ins-stats { grid-template-columns: 1fr; }
-}
-@media (max-height: 460px) {
-  .topbar { padding: 4px 6px; }
-  .chip { padding: 3px 6px; }
-}
 </style>

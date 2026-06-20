@@ -11,37 +11,143 @@ const props = defineProps<{
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const wrapRef = ref<HTMLDivElement | null>(null)
 const hover = ref<Vec2 | null>(null)
+
+// 뷰 변환(CSS px 기준): 화면좌표 = world*scale + t
+const view = { scale: 1, tx: 0, ty: 0 }
+let cw = 0
+let ch = 0
+let dpr = 1
 let raf = 0
 
-const fmtHp = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : `${Math.round(n)}`)
-const raceColor = (r: string) => (r === 'terran' ? '#3b82f6' : r === 'protoss' ? '#f59e0b' : '#a855f7')
-const raceShort = (r: string) => (r === 'terran' ? 'T' : r === 'protoss' ? 'P' : 'Z')
+const MINS = { s: 0.4 }
+const MAXS = { s: 6 }
 
-const toCanvasCoord = (e: MouseEvent): Vec2 => {
-  const c = canvasRef.value!
-  const rect = c.getBoundingClientRect()
-  return {
-    x: ((e.clientX - rect.left) / rect.width) * FIELD.width,
-    y: ((e.clientY - rect.top) / rect.height) * FIELD.height,
-  }
+// ---- 좌표 변환 ----
+const worldFromClient = (clientX: number, clientY: number): Vec2 => {
+  const rect = canvasRef.value!.getBoundingClientRect()
+  const sx = clientX - rect.left
+  const sy = clientY - rect.top
+  return { x: (sx - view.tx) / view.scale, y: (sy - view.ty) / view.scale }
 }
 
-const onMove = (e: MouseEvent) => (hover.value = toCanvasCoord(e))
+// ---- 화면 맞춤/리사이즈 ----
+const resize = () => {
+  const wrap = wrapRef.value
+  const cvs = canvasRef.value
+  if (!wrap || !cvs) return
+  dpr = Math.min(window.devicePixelRatio || 1, 2)
+  cw = wrap.clientWidth
+  ch = wrap.clientHeight
+  cvs.width = Math.round(cw * dpr)
+  cvs.height = Math.round(ch * dpr)
+  cvs.style.width = cw + 'px'
+  cvs.style.height = ch + 'px'
+}
+const fitView = () => {
+  if (!cw || !ch) return
+  const s = Math.min(cw / FIELD.width, ch / FIELD.height) * 0.98
+  view.scale = s
+  view.tx = (cw - FIELD.width * s) / 2
+  view.ty = (ch - FIELD.height * s) / 2
+}
+const clampScale = (s: number) => Math.max(MINS.s, Math.min(MAXS.s, s))
+const zoomAround = (sx: number, sy: number, factor: number) => {
+  const ns = clampScale(view.scale * factor)
+  view.tx = sx - ((sx - view.tx) / view.scale) * ns
+  view.ty = sy - ((sy - view.ty) / view.scale) * ns
+  view.scale = ns
+}
+const zoomButton = (factor: number) => zoomAround(cw / 2, ch / 2, factor)
 
-const onClick = (e: MouseEvent) => {
-  const pos = toCanvasCoord(e)
+// ---- 포인터(마우스/터치) 제스처: 탭=건설/선택, 드래그=팬, 핀치=줌 ----
+const pointers = new Map<number, { x: number; y: number }>()
+let gesture: 'none' | 'pan' | 'pinch' = 'none'
+let downX = 0
+let downY = 0
+let moved = false
+let lastDist = 0
+
+const onPointerDown = (e: PointerEvent) => {
+  canvasRef.value!.setPointerCapture(e.pointerId)
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+  if (pointers.size === 1) {
+    gesture = 'pan'
+    downX = e.clientX
+    downY = e.clientY
+    moved = false
+  } else if (pointers.size === 2) {
+    gesture = 'pinch'
+    const [p1, p2] = [...pointers.values()]
+    lastDist = Math.hypot(p1.x - p2.x, p1.y - p2.y)
+  }
+}
+const onPointerMove = (e: PointerEvent) => {
+  if (e.pointerType === 'mouse' && !pointers.has(e.pointerId)) {
+    hover.value = worldFromClient(e.clientX, e.clientY) // 마우스 호버 미리보기
+  }
+  if (!pointers.has(e.pointerId)) return
+  const prev = pointers.get(e.pointerId)!
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+  if (gesture === 'pinch' && pointers.size >= 2) {
+    const [p1, p2] = [...pointers.values()]
+    const d = Math.hypot(p1.x - p2.x, p1.y - p2.y)
+    const rect = canvasRef.value!.getBoundingClientRect()
+    const mx = (p1.x + p2.x) / 2 - rect.left
+    const my = (p1.y + p2.y) / 2 - rect.top
+    if (lastDist > 0) zoomAround(mx, my, d / lastDist)
+    lastDist = d
+  } else if (gesture === 'pan') {
+    view.tx += e.clientX - prev.x
+    view.ty += e.clientY - prev.y
+    if (Math.hypot(e.clientX - downX, e.clientY - downY) > 7) moved = true
+  }
+}
+const onPointerUp = (e: PointerEvent) => {
+  const wasTap = gesture === 'pan' && !moved && pointers.size === 1
+  pointers.delete(e.pointerId)
+  if (wasTap) handleTap(e.clientX, e.clientY)
+  gesture = pointers.size === 2 ? 'pinch' : pointers.size === 1 ? 'pan' : 'none'
+  if (pointers.size < 2) lastDist = 0
+}
+const onWheel = (e: WheelEvent) => {
+  e.preventDefault()
+  const rect = canvasRef.value!.getBoundingClientRect()
+  zoomAround(e.clientX - rect.left, e.clientY - rect.top, e.deltaY < 0 ? 1.12 : 1 / 1.12)
+}
+
+const handleTap = (clientX: number, clientY: number) => {
+  const pos = worldFromClient(clientX, clientY)
   if (props.buildMode === 'common') return void props.engine.buildCommonTower(pos)
   if (props.buildMode === 'hero' && props.heroId) return void props.engine.buildHeroTower(props.heroId, pos)
   const hit = props.engine.state.towers.find((t) => Math.hypot(t.pos.x - pos.x, t.pos.y - pos.y) <= GRID.size / 2)
   if (props.buildMode === 'merge') {
-    // 합성 모드: 타워 클릭 → 같은 종류 짝이 있으면 합성, 없으면 선택만(짝 강조)
     if (!hit) return void props.engine.selectTower(null)
     props.engine.selectTower(hit.uid)
-    if (props.engine.mergePartner(hit.uid)) props.engine.mergeTower(hit.uid)
+    props.engine.mergeTower(hit.uid) // 성공/실패 이펙트는 엔진이 발생
     return
   }
   props.engine.selectTower(hit ? hit.uid : null)
+}
+
+// ---- 효과 타이밍(시간 기반) ----
+const effectStart = new Map<number, number>()
+const EFFECT_MS = 650
+
+const raceColor = (r: string) => (r === 'terran' ? '#3b82f6' : r === 'protoss' ? '#f59e0b' : '#a855f7')
+const raceShort = (r: string) => (r === 'terran' ? 'T' : r === 'protoss' ? 'P' : 'Z')
+const fmtHp = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : `${Math.round(n)}`)
+
+const roundRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.arcTo(x + w, y, x + w, y + h, r)
+  ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r)
+  ctx.arcTo(x, y, x + w, y, r)
+  ctx.closePath()
 }
 
 const draw = () => {
@@ -49,11 +155,21 @@ const draw = () => {
   if (!c) return
   const ctx = c.getContext('2d')!
   const s = props.engine.state
-  ctx.clearRect(0, 0, FIELD.width, FIELD.height)
+  const now = performance.now()
+
+  // 배경(화면 전체)
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  ctx.fillStyle = '#060a14'
+  ctx.fillRect(0, 0, c.width, c.height)
+
+  // 월드 변환 적용
+  ctx.setTransform(view.scale * dpr, 0, 0, view.scale * dpr, view.tx * dpr, view.ty * dpr)
+
+  // 맵 바탕
   ctx.fillStyle = '#0b1220'
   ctx.fillRect(0, 0, FIELD.width, FIELD.height)
 
-  // 설치 칸(방) — 배경보다 살짝만 밝게(어둡게 유지) + 옅은 테두리
+  // 설치 칸
   const half = GRID.size / 2
   for (const cell of buildableCells) {
     ctx.fillStyle = 'rgba(255,255,255,0.035)'
@@ -75,7 +191,6 @@ const draw = () => {
   ctx.setLineDash([8, 10])
   ctx.stroke()
   ctx.setLineDash([])
-  // 입구(좌상단)·출구(중앙)
   ctx.font = 'bold 11px sans-serif'
   ctx.textAlign = 'center'
   ctx.fillStyle = '#22c55e'
@@ -92,7 +207,6 @@ const draw = () => {
   const sel = props.engine.selectedTower
   const partner = sel ? props.engine.mergePartner(sel.uid) : null
 
-  // 선택 타워 사거리
   if (sel) {
     const st = props.engine.effectiveStats(sel.blueprint)
     ctx.beginPath()
@@ -104,7 +218,7 @@ const draw = () => {
     ctx.stroke()
   }
 
-  // 타워(캐릭터 모델: 등급색 박스 + 종족 테두리 + 아이콘 + 이름)
+  // 타워
   ctx.textAlign = 'center'
   for (const t of s.towers) {
     const bp = t.blueprint
@@ -113,36 +227,30 @@ const draw = () => {
     const bx = t.pos.x
     const by = t.pos.y
     const r = 16
-    // 박스 배경(등급색, 어둡게)
     ctx.fillStyle = bp.color
     ctx.globalAlpha = 0.22
     roundRect(ctx, bx - r, by - r, r * 2, r * 2, 6)
     ctx.fill()
     ctx.globalAlpha = 1
-    // 종족 테두리
     ctx.strokeStyle = isSel ? '#ffffff' : isPartner ? '#22d3ee' : raceColor(bp.race)
     ctx.lineWidth = isSel || isPartner ? 3 : 2
     roundRect(ctx, bx - r, by - r, r * 2, r * 2, 6)
     ctx.stroke()
-    // 아이콘
     ctx.font = '17px "Segoe UI Emoji", sans-serif'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = '#fff'
     ctx.fillText(bp.icon, bx, by - 1)
-    // 종족 약자(좌상단 작은 배지)
     ctx.font = 'bold 8px sans-serif'
     ctx.fillStyle = raceColor(bp.race)
     ctx.fillText(raceShort(bp.race), bx - r + 4, by - r + 4)
-    // 이름 라벨
     ctx.font = '8px sans-serif'
     ctx.textBaseline = 'top'
-    const label = bp.name
-    const lw = ctx.measureText(label).width + 6
+    const lw = ctx.measureText(bp.name).width + 6
     ctx.fillStyle = 'rgba(2,6,16,0.78)'
     roundRect(ctx, bx - lw / 2, by + r - 1, lw, 11, 3)
     ctx.fill()
     ctx.fillStyle = bp.color
-    ctx.fillText(label, bx, by + r)
+    ctx.fillText(bp.name, bx, by + r)
   }
   ctx.textBaseline = 'alphabetic'
   ctx.textAlign = 'left'
@@ -169,7 +277,6 @@ const draw = () => {
     ctx.fillRect(e.pos.x - w / 2, e.pos.y - e.blueprint.radius - 7, w, 4)
     ctx.fillStyle = ratio > 0.5 ? '#22c55e' : ratio > 0.25 ? '#f59e0b' : '#ef4444'
     ctx.fillRect(e.pos.x - w / 2, e.pos.y - e.blueprint.radius - 7, w * ratio, 4)
-    // 보스·미션 몹은 HP 숫자 표시
     if (e.isBoss || e.isMission) {
       ctx.font = 'bold 10px sans-serif'
       ctx.textAlign = 'center'
@@ -189,7 +296,49 @@ const draw = () => {
     ctx.fill()
   }
 
-  // 건설 커서(셀 스냅) — 배치 모드에서만
+  // 합성 효과
+  for (const fx of s.effects) {
+    if (!effectStart.has(fx.id)) effectStart.set(fx.id, now)
+    const age = now - effectStart.get(fx.id)!
+    const k = Math.min(age / EFFECT_MS, 1)
+    ctx.globalAlpha = 1 - k
+    if (fx.kind === 'merge-success') {
+      const r = 8 + k * 40
+      ctx.strokeStyle = '#22c55e'
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.arc(fx.x, fx.y, r, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.fillStyle = '#bbf7d0'
+      for (let i = 0; i < 8; i++) {
+        const a = (Math.PI * 2 * i) / 8
+        const d = 6 + k * 34
+        ctx.beginPath()
+        ctx.arc(fx.x + Math.cos(a) * d, fx.y + Math.sin(a) * d, 2.5 * (1 - k) + 0.5, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    } else {
+      ctx.strokeStyle = '#ef4444'
+      ctx.lineWidth = 3
+      const s2 = 12
+      ctx.beginPath()
+      ctx.moveTo(fx.x - s2, fx.y - s2)
+      ctx.lineTo(fx.x + s2, fx.y + s2)
+      ctx.moveTo(fx.x + s2, fx.y - s2)
+      ctx.lineTo(fx.x - s2, fx.y + s2)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(fx.x, fx.y, 8 + k * 14, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 1
+    if (age >= EFFECT_MS) {
+      effectStart.delete(fx.id)
+      props.engine.removeEffect(fx.id)
+    }
+  }
+
+  // 건설 커서(셀 스냅) — 마우스 배치 모드만
   if (hover.value && (props.buildMode === 'common' || props.buildMode === 'hero')) {
     const cell = snapToGrid(hover.value)
     const ok = props.engine.canPlaceAt(hover.value)
@@ -203,46 +352,80 @@ const draw = () => {
   raf = requestAnimationFrame(draw)
 }
 
-const roundRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
-  ctx.beginPath()
-  ctx.moveTo(x + r, y)
-  ctx.arcTo(x + w, y, x + w, y + h, r)
-  ctx.arcTo(x + w, y + h, x, y + h, r)
-  ctx.arcTo(x, y + h, x, y, r)
-  ctx.arcTo(x, y, x + w, y, r)
-  ctx.closePath()
-}
+let ro: ResizeObserver | null = null
+onMounted(() => {
+  resize()
+  fitView()
+  ro = new ResizeObserver(() => {
+    resize()
+    fitView()
+  })
+  if (wrapRef.value) ro.observe(wrapRef.value)
+  raf = requestAnimationFrame(draw)
+})
+onUnmounted(() => {
+  cancelAnimationFrame(raf)
+  ro?.disconnect()
+})
 
-onMounted(() => (raf = requestAnimationFrame(draw)))
-onUnmounted(() => cancelAnimationFrame(raf))
+defineExpose({ zoomIn: () => zoomButton(1.25), zoomOut: () => zoomButton(1 / 1.25), fit: fitView })
 </script>
 
 <template>
-  <canvas
-    ref="canvasRef"
-    :width="FIELD.width"
-    :height="FIELD.height"
-    class="field"
-    :class="{ building: buildMode !== 'idle' }"
-    @click="onClick"
-    @mousemove="onMove"
-    @mouseleave="hover = null"
-  />
+  <div ref="wrapRef" class="field-wrap">
+    <canvas
+      ref="canvasRef"
+      class="field"
+      @pointerdown="onPointerDown"
+      @pointermove="onPointerMove"
+      @pointerup="onPointerUp"
+      @pointercancel="onPointerUp"
+      @pointerleave="hover = null"
+      @wheel="onWheel"
+    />
+    <div class="zoom">
+      <button @click="zoomButton(1.25)">＋</button>
+      <button @click="zoomButton(1 / 1.25)">－</button>
+      <button class="fitb" @click="fitView">⊡</button>
+    </div>
+  </div>
 </template>
 
 <style scoped>
+.field-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #060a14;
+}
 .field {
-  /* 필드 영역에 맞춰 종횡비 유지하며 축소(요소 박스 = 렌더 영역 → 클릭 좌표 정확) */
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
   display: block;
+  touch-action: none; /* 브라우저 기본 스크롤/줌 차단 → 직접 제스처 처리 */
+  cursor: grab;
+}
+.field:active {
+  cursor: grabbing;
+}
+.zoom {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 3;
+}
+.zoom button {
+  width: 40px;
+  height: 40px;
   border-radius: 10px;
   border: 1px solid #1f2d45;
-  background: #0b1220;
+  background: rgba(17, 26, 46, 0.85);
+  color: #e2e8f0;
+  font-size: 18px;
+  cursor: pointer;
 }
-.field.building {
-  cursor: crosshair;
+.zoom .fitb {
+  font-size: 15px;
 }
 </style>

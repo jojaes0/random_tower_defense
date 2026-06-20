@@ -52,7 +52,16 @@ export interface GameState {
   questsDone: Record<string, boolean>
   lastGasGamble: number | null
   notifications: GameNotification[]
+  effects: GameEffect[]
   message: string
+}
+
+/** 합성 등 일시적 시각 효과 (GameField가 시간 기반으로 애니메이션 후 제거) */
+export interface GameEffect {
+  id: number
+  x: number
+  y: number
+  kind: 'merge-success' | 'merge-fail'
 }
 
 /** 보상/달성 토스트 */
@@ -99,8 +108,20 @@ export class GameEngine {
     questsDone: {},
     lastGasGamble: null,
     notifications: [],
+    effects: [],
     message: '난이도를 선택하세요.',
   })
+
+  private addEffect = (pos: Vec2, kind: GameEffect['kind']): void => {
+    this.state.effects.push({ id: this.nextUid(), x: pos.x, y: pos.y, kind })
+    if (this.state.effects.length > 12) this.state.effects.shift()
+  }
+
+  /** GameField가 애니메이션 종료 후 호출 */
+  removeEffect = (id: number): void => {
+    const i = this.state.effects.findIndex((e) => e.id === id)
+    if (i >= 0) this.state.effects.splice(i, 1)
+  }
 
   private notify = (kind: GameNotification['kind'], title: string, detail: string): void => {
     this.state.notifications.push({ id: this.nextUid(), kind, title, detail })
@@ -295,13 +316,20 @@ export class GameEngine {
     const a = this.state.towers.find((x) => x.uid === uid)
     if (!a) return false
     const b = this.mergePartner(uid)
-    if (!b) return this.fail('합성할 같은 종류 타워가 없습니다.')
+    if (!b) {
+      this.addEffect(a.pos, 'merge-fail')
+      return this.fail('합성할 같은 종류 타워가 없습니다.')
+    }
     const up = nextRarity(a.blueprint.rarity)
-    if (!up) return this.fail('신 등급은 더 이상 합성할 수 없습니다.')
+    if (!up) {
+      this.addEffect(a.pos, 'merge-fail')
+      return this.fail('신 등급은 더 이상 합성할 수 없습니다.')
+    }
     const pos = { ...a.pos }
     this.state.towers = this.state.towers.filter((x) => x.uid !== a.uid && x.uid !== b.uid)
     const bp = randItem(TOWERS_BY_RARITY[up])
     this.placeTower(bp, pos)
+    this.addEffect(pos, 'merge-success')
     this.state.message = `합성 성공 → [${RARITY_META[up].label}] ${bp.name}(${RACE_BY_ID[bp.race].short})!`
     this.afterChange()
     return true
