@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import type { GameEngine } from '@/engine/GameEngine'
 import { FIELD, GRID, PATH_END, PATH_START, WAYPOINTS, buildableCells, snapToGrid } from '@/engine/path'
 import type { Vec2 } from '@/engine/types'
-import { ARCHETYPE, drawGlyph, raceColor, roundRect } from './glyph'
+import { drawGlyph, raceColor, roundRect } from './glyph'
 
 const props = defineProps<{
   engine: GameEngine
@@ -284,7 +284,7 @@ const draw = () => {
     roundRect(ctx, bx - r, by - r, r * 2, r * 2, 6)
     ctx.stroke()
     // 캐릭터 글리프(절차적)
-    drawGlyph(ctx, ARCHETYPE[bp.id] ?? 'soldier', bx, by)
+    drawGlyph(ctx, bp.id, bx, by)
     // 종족 약자 칩 (혼종은 'PZ')
     const rs = bp.races.map(raceShort).join('')
     const chipW = 5 + rs.length * 6
