@@ -159,7 +159,7 @@ const handleTap = (clientX: number, clientY: number) => {
 const effectStart = new Map<number, number>()
 const EFFECT_MS = 650
 
-const raceColor = (r: string) => (r === 'terran' ? '#3b82f6' : r === 'protoss' ? '#f59e0b' : '#a855f7')
+const raceColor = (r: string) => (r === 'terran' ? '#3b82f6' : r === 'protoss' ? '#facc15' : '#ec4899')
 const raceShort = (r: string) => (r === 'terran' ? 'T' : r === 'protoss' ? 'P' : 'Z')
 const fmtHp = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : `${Math.round(n)}`)
 
@@ -259,22 +259,28 @@ const draw = () => {
     const bx = t.pos.x
     const by = t.pos.y
     const r = 16
-    ctx.fillStyle = bp.color
-    ctx.globalAlpha = 0.22
+    // 본체 = 종족 색
+    ctx.fillStyle = raceColor(bp.race)
+    ctx.globalAlpha = 0.4
     roundRect(ctx, bx - r, by - r, r * 2, r * 2, 6)
     ctx.fill()
     ctx.globalAlpha = 1
-    ctx.strokeStyle = isSel ? '#ffffff' : isPartner ? '#22d3ee' : raceColor(bp.race)
-    ctx.lineWidth = isSel || isPartner ? 3 : 2
+    // 테두리 = 등급 색
+    ctx.strokeStyle = isSel ? '#ffffff' : isPartner ? '#22d3ee' : bp.color
+    ctx.lineWidth = isSel || isPartner ? 4 : 3
     roundRect(ctx, bx - r, by - r, r * 2, r * 2, 6)
     ctx.stroke()
     ctx.font = '17px "Segoe UI Emoji", sans-serif'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = '#fff'
     ctx.fillText(bp.icon, bx, by - 1)
-    ctx.font = 'bold 8px sans-serif'
+    // 종족 약자 — 종족색 칩 위에 흰 글자
     ctx.fillStyle = raceColor(bp.race)
-    ctx.fillText(raceShort(bp.race), bx - r + 4, by - r + 4)
+    roundRect(ctx, bx - r + 1, by - r + 1, 11, 9, 2)
+    ctx.fill()
+    ctx.font = 'bold 8px sans-serif'
+    ctx.fillStyle = '#fff'
+    ctx.fillText(raceShort(bp.race), bx - r + 6.5, by - r + 6)
     ctx.font = '8px sans-serif'
     ctx.textBaseline = 'top'
     const lw = ctx.measureText(bp.name).width + 6

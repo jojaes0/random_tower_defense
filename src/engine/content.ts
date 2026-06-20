@@ -18,10 +18,11 @@ import type {
 // 종족
 // ---------------------------------------------------------------------------
 
+// 종족 고유색(=타워 본체). 등급색(흰/파랑/보라/주황/초록)과 겹치지 않게: 테란 파랑 / 프로토스 노랑 / 저그 마젠타
 export const RACES: Race[] = [
   { id: 'terran', name: '테란', short: 'T', color: '#3b82f6', tagline: '단일 고화력 — 보스에 강함' },
-  { id: 'protoss', name: '프로토스', short: 'P', color: '#f59e0b', tagline: '광역·밸런스 — 보스/라인 무난' },
-  { id: 'zerg', name: '저그', short: 'Z', color: '#a855f7', tagline: '라인 클리어 — 잡몹에 강함' },
+  { id: 'protoss', name: '프로토스', short: 'P', color: '#facc15', tagline: '광역·밸런스 — 보스/라인 무난' },
+  { id: 'zerg', name: '저그', short: 'Z', color: '#ec4899', tagline: '라인 클리어 — 잡몹에 강함' },
 ]
 
 export const RACE_BY_ID: Record<RaceId, Race> = {

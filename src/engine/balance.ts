@@ -84,10 +84,11 @@ export const nextRarity = (r: Rarity): Rarity | null => {
   return i >= 0 && i < RARITY_ORDER.length - 1 ? RARITY_ORDER[i + 1] : null
 }
 
+// 등급별 색(=타워 테두리). 사용자 지정: 일반 흰색 / 희귀 밝은파랑 / 영웅 보라 / 전설 주황 / 신 밝은초록
 export const RARITY_META: Record<Rarity, { label: string; color: string }> = {
-  common: { label: '일반', color: '#e5e7eb' },
-  rare: { label: '희귀', color: '#3b82f6' },
+  common: { label: '일반', color: '#ffffff' },
+  rare: { label: '희귀', color: '#38bdf8' },
   hero: { label: '영웅', color: '#a855f7' },
-  legend: { label: '전설', color: '#f59e0b' },
-  god: { label: '신', color: '#22c55e' },
+  legend: { label: '전설', color: '#f97316' },
+  god: { label: '신', color: '#4ade80' },
 }
