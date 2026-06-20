@@ -142,10 +142,10 @@ const menuAlert = computed(() => {
         <span class="badge" :style="{ background: RARITY_META[sel.blueprint.rarity].color }">{{ RARITY_META[sel.blueprint.rarity].label }}</span>
         <button class="ins-close" @click="engine.selectTower(null)">✕</button>
       </div>
-      <div class="ins-sub">{{ raceNames(sel.blueprint.races) }}{{ sel.blueprint.races.length > 1 ? ' (혼합)' : '' }}</div>
+      <div class="ins-sub">{{ raceNames(sel.blueprint.races) }}{{ sel.blueprint.races.length > 1 ? ' (혼합)' : '' }}{{ sel.blueprint.hits > 1 ? ' · ' + sel.blueprint.hits + '연사' : '' }}</div>
       <p v-if="sel.blueprint.skillDesc" class="skill">✦ {{ sel.blueprint.skillDesc }}<span v-if="sel.dmgBonusMul > 1"> ×{{ sel.dmgBonusMul.toFixed(0) }}</span></p>
       <ul class="ins-stats">
-        <li><span>DPS</span><b>{{ (selStats.damage * selStats.attackSpeed).toFixed(0) }}</b></li>
+        <li><span>DPS</span><b>{{ (selStats.damage * selStats.attackSpeed * sel.blueprint.hits).toFixed(0) }}</b></li>
         <li><span>사거리</span><b>{{ selStats.range.toFixed(0) }}</b></li>
         <li><span>범위</span><b>{{ selStats.splashRadius > 0 ? selStats.splashRadius.toFixed(0) : '단일' }}</b></li>
         <li><span>보스</span><b>×{{ selStats.bonusVsBoss.toFixed(1) }}</b></li>

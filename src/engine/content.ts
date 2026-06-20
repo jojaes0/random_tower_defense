@@ -45,6 +45,8 @@ interface TowerDef {
   rarity: Rarity
   role: Role
   dps: number
+  /** 공격 횟수(주기당 발사 수) */
+  hits: number
   interval: number
   rangeUnit: number
   skill?: SkillId
@@ -59,58 +61,58 @@ const roleBoss: Record<Role, number> = { line: 1.0, balance: 1.4, boss: 2.2 }
 // dps=공식 DPS, interval=공격속도(초), rangeUnit=사거리. damage=round(dps*interval), 공속=1/interval.
 const DEFS: TowerDef[] = [
   // ── 일반(common) 8 ──────────────────────────────────────────────
-  { id: 'scv', name: '건설 로봇', race: 'terran', rarity: 'common', role: 'balance', dps: 41.6, interval: 1.2, rangeUnit: 7 },
-  { id: 'trooper', name: '부대원', race: 'terran', rarity: 'common', role: 'balance', dps: 26, interval: 0.69, rangeUnit: 6 },
-  { id: 'reaper', name: '사신', race: 'protoss', rarity: 'common', role: 'balance', dps: 16, interval: 0.88, rangeUnit: 6 },
-  { id: 'fanatic', name: '광신자', race: 'protoss', rarity: 'common', role: 'balance', dps: 45, interval: 1, rangeUnit: 7 },
-  { id: 'stalker', name: '추적자', race: 'protoss', rarity: 'common', role: 'balance', dps: 40, interval: 1.15, rangeUnit: 7 },
-  { id: 'gargoyle', name: '갈귀', race: 'zerg', rarity: 'common', role: 'balance', dps: 27.3, interval: 0.83, rangeUnit: 7 },
-  { id: 'overlord', name: '대군주', race: 'zerg', rarity: 'common', role: 'balance', dps: 23.4, interval: 0.68, rangeUnit: 7 },
-  { id: 'zergling', name: '저글링', race: 'zerg', rarity: 'common', role: 'balance', dps: 22, interval: 0.56, rangeUnit: 5 },
+  { id: 'scv', name: '건설 로봇', race: 'terran', rarity: 'common', role: 'balance', dps: 41.6, hits: 1, interval: 1.2, rangeUnit: 7 },
+  { id: 'trooper', name: '부대원', race: 'terran', rarity: 'common', role: 'balance', dps: 26, hits: 1, interval: 0.69, rangeUnit: 6 },
+  { id: 'reaper', name: '사신', race: 'protoss', rarity: 'common', role: 'balance', dps: 16, hits: 2, interval: 0.88, rangeUnit: 6 },
+  { id: 'fanatic', name: '광신자', race: 'protoss', rarity: 'common', role: 'balance', dps: 45, hits: 1, interval: 1, rangeUnit: 7 },
+  { id: 'stalker', name: '추적자', race: 'protoss', rarity: 'common', role: 'balance', dps: 40, hits: 1, interval: 1.15, rangeUnit: 7 },
+  { id: 'gargoyle', name: '갈귀', race: 'zerg', rarity: 'common', role: 'balance', dps: 27.3, hits: 1, interval: 0.83, rangeUnit: 7 },
+  { id: 'overlord', name: '대군주', race: 'zerg', rarity: 'common', role: 'balance', dps: 23.4, hits: 1, interval: 0.68, rangeUnit: 7 },
+  { id: 'zergling', name: '저글링', race: 'zerg', rarity: 'common', role: 'balance', dps: 22, hits: 1, interval: 0.56, rangeUnit: 5 },
 
   // ── 희귀(rare) 8 ────────────────────────────────────────────────
-  { id: 'marauder_corps', name: '불곰 특공대', race: 'terran', rarity: 'rare', role: 'balance', dps: 81.9, interval: 1.2, rangeUnit: 7 },
-  { id: 'cyclone', name: '사이클론', race: 'terran', rarity: 'rare', role: 'balance', dps: 20.8, interval: 0.25, rangeUnit: 7 },
-  { id: 'ghost', name: '유령', race: 'terran', rarity: 'rare', role: 'balance', dps: 75, interval: 1.12, rangeUnit: 8 },
-  { id: 'zealot', name: '광전사', race: 'protoss', rarity: 'rare', role: 'balance', dps: 39, interval: 0.96, rangeUnit: 5 },
-  { id: 'dragoon', name: '용기병', race: 'protoss', rarity: 'rare', role: 'balance', dps: 99, interval: 1.44, rangeUnit: 1.7 },
-  { id: 'warp_prism', name: '전쟁 분광기', race: 'protoss', rarity: 'rare', role: 'balance', dps: 70, interval: 1.04, rangeUnit: 8 },
-  { id: 'roach', name: '바퀴', race: 'zerg', rarity: 'rare', role: 'balance', dps: 115, interval: 1.6, rangeUnit: 6 },
-  { id: 'hydralisk', name: '히드라리스크', race: 'zerg', rarity: 'rare', role: 'balance', dps: 55, interval: 0.83, rangeUnit: 7.2 },
+  { id: 'marauder_corps', name: '불곰 특공대', race: 'terran', rarity: 'rare', role: 'balance', dps: 81.9, hits: 1, interval: 1.2, rangeUnit: 7 },
+  { id: 'cyclone', name: '사이클론', race: 'terran', rarity: 'rare', role: 'balance', dps: 20.8, hits: 1, interval: 0.25, rangeUnit: 7 },
+  { id: 'ghost', name: '유령', race: 'terran', rarity: 'rare', role: 'balance', dps: 75, hits: 1, interval: 1.12, rangeUnit: 8 },
+  { id: 'zealot', name: '광전사', race: 'protoss', rarity: 'rare', role: 'balance', dps: 39, hits: 2, interval: 0.96, rangeUnit: 5 },
+  { id: 'dragoon', name: '용기병', race: 'protoss', rarity: 'rare', role: 'balance', dps: 99, hits: 1, interval: 1.44, rangeUnit: 1.7 },
+  { id: 'warp_prism', name: '전쟁 분광기', race: 'protoss', rarity: 'rare', role: 'balance', dps: 70, hits: 1, interval: 1.04, rangeUnit: 8 },
+  { id: 'roach', name: '바퀴', race: 'zerg', rarity: 'rare', role: 'balance', dps: 115, hits: 1, interval: 1.6, rangeUnit: 6 },
+  { id: 'hydralisk', name: '히드라리스크', race: 'zerg', rarity: 'rare', role: 'balance', dps: 55, hits: 1, interval: 0.83, rangeUnit: 7.2 },
 
   // ── 영웅(hero) 8 ────────────────────────────────────────────────
-  { id: 'goliath', name: '골리앗', race: 'terran', rarity: 'hero', role: 'balance', dps: 156, interval: 3, rangeUnit: 9 },
-  { id: 'thor', name: '토르', race: 'terran', rarity: 'hero', role: 'balance', dps: 137, interval: 1.1, rangeUnit: 7.2 },
-  { id: 'ascendant', name: '승천자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 208, interval: 1.6, rangeUnit: 7.2 },
-  { id: 'executor', name: '젤나가 집행자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 273, interval: 1.45, rangeUnit: 7.2 },
-  { id: 'reaver', name: '파괴자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 247, interval: 1.8, rangeUnit: 7.2 },
-  { id: 'swarm_host', name: '군단 숙주', race: 'zerg', rarity: 'hero', role: 'balance', dps: 52, interval: 2.5, rangeUnit: 7.2 },
-  { id: 'queen', name: '여왕', race: 'zerg', rarity: 'hero', role: 'balance', dps: 364, interval: 1.5, rangeUnit: 9 },
-  { id: 'primal_igniter', name: '원시 점화자', race: 'zerg', rarity: 'hero', role: 'balance', dps: 195, interval: 1, rangeUnit: 6 },
+  { id: 'goliath', name: '골리앗', race: 'terran', rarity: 'hero', role: 'balance', dps: 156, hits: 2, interval: 3, rangeUnit: 9 },
+  { id: 'thor', name: '토르', race: 'terran', rarity: 'hero', role: 'balance', dps: 137, hits: 2, interval: 1.1, rangeUnit: 7.2 },
+  { id: 'ascendant', name: '승천자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 208, hits: 1, interval: 1.6, rangeUnit: 7.2 },
+  { id: 'executor', name: '젤나가 집행자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 273, hits: 1, interval: 1.45, rangeUnit: 7.2 },
+  { id: 'reaver', name: '파괴자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 247, hits: 1, interval: 1.8, rangeUnit: 7.2 },
+  { id: 'swarm_host', name: '군단 숙주', race: 'zerg', rarity: 'hero', role: 'balance', dps: 52, hits: 1, interval: 2.5, rangeUnit: 7.2 },
+  { id: 'queen', name: '여왕', race: 'zerg', rarity: 'hero', role: 'balance', dps: 364, hits: 1, interval: 1.5, rangeUnit: 9 },
+  { id: 'primal_igniter', name: '원시 점화자', race: 'zerg', rarity: 'hero', role: 'balance', dps: 195, hits: 1, interval: 1, rangeUnit: 6 },
 
   // ── 전설(legend) 8 ──────────────────────────────────────────────
-  { id: 'valerius', name: '발리우스', race: 'terran', rarity: 'legend', role: 'balance', dps: 527, interval: 1, rangeUnit: 7.2 },
-  { id: 'warfield', name: '워필드', race: 'terran', rarity: 'legend', role: 'balance', dps: 585, interval: 1.04, rangeUnit: 7.2 },
-  { id: 'mojo', name: '모조', race: 'protoss', rarity: 'legend', role: 'balance', dps: 1200, interval: 1.2, rangeUnit: 7.2 },
-  { id: 'mohandar', name: '모한다르', race: 'protoss', rarity: 'legend', role: 'balance', dps: 128, interval: 1, rangeUnit: 11 },
-  { id: 'urun', name: '우룬', race: 'protoss', rarity: 'legend', role: 'balance', dps: 273, interval: 0.8, rangeUnit: 7.2 },
-  { id: 'zagara', name: '자가라', race: 'zerg', rarity: 'legend', role: 'balance', dps: 292, interval: 1.35, rangeUnit: 7 },
-  { id: 'torrasque', name: '토라스크', race: 'zerg', rarity: 'legend', role: 'balance', dps: 325, interval: 0.5, rangeUnit: 7 },
-  { id: 'mecha_ravager', name: '메카 궤멸충', race: 'terran', races: ['terran', 'zerg'], rarity: 'legend', role: 'balance', dps: 858, interval: 1.3, rangeUnit: 7.2 },
+  { id: 'valerius', name: '발리우스', race: 'terran', rarity: 'legend', role: 'balance', dps: 527, hits: 1, interval: 1, rangeUnit: 7.2 },
+  { id: 'warfield', name: '워필드', race: 'terran', rarity: 'legend', role: 'balance', dps: 585, hits: 1, interval: 1.04, rangeUnit: 7.2 },
+  { id: 'mojo', name: '모조', race: 'protoss', rarity: 'legend', role: 'balance', dps: 1200, hits: 1, interval: 1.2, rangeUnit: 7.2 },
+  { id: 'mohandar', name: '모한다르', race: 'protoss', rarity: 'legend', role: 'balance', dps: 128, hits: 1, interval: 1, rangeUnit: 11 },
+  { id: 'urun', name: '우룬', race: 'protoss', rarity: 'legend', role: 'balance', dps: 273, hits: 2, interval: 0.8, rangeUnit: 7.2 },
+  { id: 'zagara', name: '자가라', race: 'zerg', rarity: 'legend', role: 'balance', dps: 292, hits: 1, interval: 1.35, rangeUnit: 7 },
+  { id: 'torrasque', name: '토라스크', race: 'zerg', rarity: 'legend', role: 'balance', dps: 325, hits: 1, interval: 0.5, rangeUnit: 7 },
+  { id: 'mecha_ravager', name: '메카 궤멸충', race: 'terran', races: ['terran', 'zerg'], rarity: 'legend', role: 'balance', dps: 858, hits: 1, interval: 1.3, rangeUnit: 7.2 },
 
   // ── 신(god) 12 ──────────────────────────────────────────────────
-  { id: 'sam', name: '사기꾼 샘', race: 'terran', rarity: 'god', role: 'balance', dps: 1650, interval: 0.88, rangeUnit: 7.2 },
-  { id: 'tauren_marine', name: '타우렌 우주 해병', race: 'terran', rarity: 'god', role: 'balance', dps: 1900, interval: 0.6, rangeUnit: 7.2 },
-  { id: 'duke', name: '듀크', race: 'terran', rarity: 'god', role: 'balance', dps: 2300, interval: 1, rangeUnit: 10 },
-  { id: 'rasagal', name: '라자갈', race: 'protoss', rarity: 'god', role: 'balance', dps: 1250, interval: 0.27, rangeUnit: 7.2 },
-  { id: 'malash', name: '말라쉬', race: 'protoss', rarity: 'god', role: 'balance', dps: 2400, interval: 0.7, rangeUnit: 7.2 },
-  { id: 'vorazun', name: '보라준', race: 'protoss', rarity: 'god', role: 'balance', dps: 1550, interval: 0.95, rangeUnit: 7.2 },
-  { id: 'impaler', name: '추적 도살자', race: 'zerg', rarity: 'god', role: 'balance', dps: 2700, interval: 0.7, rangeUnit: 7.2 },
-  { id: 'sliven', name: '슬리반', race: 'zerg', rarity: 'god', role: 'balance', dps: 1000, interval: 1.35, rangeUnit: 7.2 },
-  { id: 'mobius_hybrid', name: '뫼비우스 혼종', race: 'terran', races: ['terran', 'protoss', 'zerg'], rarity: 'god', role: 'balance', dps: 1400, interval: 1.25, rangeUnit: 10 },
-  { id: 'raynor', name: '레이너', race: 'terran', rarity: 'god', role: 'balance', dps: 3800, interval: 0.6, rangeUnit: 7.2 },
-  { id: 'zeratul', name: '제라툴', race: 'protoss', rarity: 'god', role: 'balance', dps: 2650, interval: 0.95, rangeUnit: 7.2 },
-  { id: 'kukulza', name: '쿠쿨자', race: 'zerg', rarity: 'god', role: 'balance', dps: 3500, interval: 1, rangeUnit: 7.2 },
+  { id: 'sam', name: '사기꾼 샘', race: 'terran', rarity: 'god', role: 'balance', dps: 1650, hits: 2, interval: 0.88, rangeUnit: 7.2 },
+  { id: 'tauren_marine', name: '타우렌 우주 해병', race: 'terran', rarity: 'god', role: 'balance', dps: 1900, hits: 1, interval: 0.6, rangeUnit: 7.2 },
+  { id: 'duke', name: '듀크', race: 'terran', rarity: 'god', role: 'balance', dps: 2300, hits: 1, interval: 1, rangeUnit: 10 },
+  { id: 'rasagal', name: '라자갈', race: 'protoss', rarity: 'god', role: 'balance', dps: 1250, hits: 1, interval: 0.27, rangeUnit: 7.2 },
+  { id: 'malash', name: '말라쉬', race: 'protoss', rarity: 'god', role: 'balance', dps: 2400, hits: 1, interval: 0.7, rangeUnit: 7.2 },
+  { id: 'vorazun', name: '보라준', race: 'protoss', rarity: 'god', role: 'balance', dps: 1550, hits: 1, interval: 0.95, rangeUnit: 7.2 },
+  { id: 'impaler', name: '추적 도살자', race: 'zerg', rarity: 'god', role: 'balance', dps: 2700, hits: 1, interval: 0.7, rangeUnit: 7.2 },
+  { id: 'sliven', name: '슬리반', race: 'zerg', rarity: 'god', role: 'balance', dps: 1000, hits: 1, interval: 1.35, rangeUnit: 7.2 },
+  { id: 'mobius_hybrid', name: '뫼비우스 혼종', race: 'terran', races: ['terran', 'protoss', 'zerg'], rarity: 'god', role: 'balance', dps: 1400, hits: 1, interval: 1.25, rangeUnit: 10 },
+  { id: 'raynor', name: '레이너', race: 'terran', rarity: 'god', role: 'balance', dps: 3800, hits: 1, interval: 0.6, rangeUnit: 7.2 },
+  { id: 'zeratul', name: '제라툴', race: 'protoss', rarity: 'god', role: 'balance', dps: 2650, hits: 1, interval: 0.95, rangeUnit: 7.2 },
+  { id: 'kukulza', name: '쿠쿨자', race: 'zerg', rarity: 'god', role: 'balance', dps: 3500, hits: 1, interval: 1, rangeUnit: 7.2 },
 ]
 
 // 타워별 캐릭터 아이콘 — 무슨 유닛인지 한눈에 구분
@@ -135,7 +137,9 @@ const buildBlueprint = (d: TowerDef): TowerBlueprint => ({
   races: d.races ?? [d.race],
   rarity: d.rarity,
   role: d.role,
-  damage: Math.round(d.dps * d.interval),
+  // 발당 피해 = DPS × 공격속도 ÷ 공격횟수 (주기당 hits발 발사 → 총합이 DPS 유지)
+  damage: Math.round((d.dps * d.interval) / d.hits),
+  hits: d.hits,
   attackSpeed: +(1 / d.interval).toFixed(2),
   range: Math.round(d.rangeUnit * RANGE_SCALE),
   splashRadius: roleSplash[d.role],

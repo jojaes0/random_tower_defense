@@ -524,38 +524,40 @@ export class GameEngine {
       t.cooldown -= dt
       if (t.cooldown > 0) continue
       const stats = this.effectiveStats(t.blueprint, t.dmgBonusMul)
-      const target = this.acquireTarget(t.pos, stats.range)
-      if (!target) continue
+      const hits = t.blueprint.hits
+      const targets = this.acquireTargets(t.pos, stats.range, hits)
+      if (targets.length === 0) continue
       t.cooldown = 1 / stats.attackSpeed
-      // 사도 분신: 발사 시 확률적으로 공격력 누적 증가
+      // 사도 분신(현 로스터엔 없음): 발사 시 확률적으로 공격력 누적 증가
       if (t.blueprint.skill === 'clone' && Math.random() < BALANCE.cloneChance) {
         t.dmgBonusMul = Math.min(t.dmgBonusMul + 1, 1 + BALANCE.cloneMaxStacks)
       }
-      this.state.projectiles.push({
-        uid: this.nextUid(),
-        from: { ...t.pos },
-        to: { ...target.pos },
-        targetUid: target.uid,
-        damage: stats.damage,
-        splashRadius: stats.splashRadius,
-        bonusVsBoss: stats.bonusVsBoss,
-        color: t.blueprint.color,
-        skill: t.blueprint.skill,
-        t: 0,
-        speed: 6,
-      })
+      // 주기당 hits발 발사 — 대상이 부족하면 앞선 적에게 중복 타격
+      for (let i = 0; i < hits; i++) {
+        const target = targets[i % targets.length]
+        this.state.projectiles.push({
+          uid: this.nextUid(),
+          from: { ...t.pos },
+          to: { ...target.pos },
+          targetUid: target.uid,
+          damage: stats.damage,
+          splashRadius: stats.splashRadius,
+          bonusVsBoss: stats.bonusVsBoss,
+          color: t.blueprint.color,
+          skill: t.blueprint.skill,
+          t: 0,
+          speed: 6,
+        })
+      }
     }
   }
 
-  private acquireTarget = (pos: Vec2, range: number): Enemy | null => {
-    let best: Enemy | null = null
-    for (const e of this.state.enemies) {
-      if (Math.hypot(e.pos.x - pos.x, e.pos.y - pos.y) <= range) {
-        if (!best || e.progress > best.progress) best = e
-      }
-    }
-    return best
-  }
+  /** 사거리 내 진행도 높은 순으로 최대 n마리 */
+  private acquireTargets = (pos: Vec2, range: number, n: number): Enemy[] =>
+    this.state.enemies
+      .filter((e) => Math.hypot(e.pos.x - pos.x, e.pos.y - pos.y) <= range)
+      .sort((a, b) => b.progress - a.progress)
+      .slice(0, n)
 
   private projectileTick = (dt: number): void => {
     const alive: Projectile[] = []

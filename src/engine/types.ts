@@ -41,7 +41,9 @@ export interface TowerBlueprint {
   role: Role
   /** 발당 피해 */
   damage: number
-  /** 초당 공격 횟수 */
+  /** 주기당 발사 수(공격 횟수) — 여러 대상에 분산 타격 */
+  hits: number
+  /** 초당 공격 주기 수 */
   attackSpeed: number
   /** 사거리(px) */
   range: number
