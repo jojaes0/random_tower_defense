@@ -478,6 +478,16 @@ const draw = () => {
   raf = requestAnimationFrame(draw)
 }
 
+// iOS Safari는 viewport user-scalable=no / touch-action 을 더블탭 줌에 대해 무시하므로,
+// 짧은 간격으로 들어오는 두 번째 touchend의 기본 동작(더블탭 확대)을 직접 차단한다.
+// (탭 배치는 pointerup으로 처리하므로 영향 없음)
+let lastTouchEnd = 0
+const onTouchEnd = (e: TouchEvent) => {
+  const now = performance.now()
+  if (now - lastTouchEnd <= 320) e.preventDefault()
+  lastTouchEnd = now
+}
+
 let ro: ResizeObserver | null = null
 onMounted(() => {
   resize()
@@ -486,12 +496,17 @@ onMounted(() => {
     resize()
     fitView()
   })
-  if (wrapRef.value) ro.observe(wrapRef.value)
+  if (wrapRef.value) {
+    ro.observe(wrapRef.value)
+    // passive:false 여야 preventDefault 가능
+    wrapRef.value.addEventListener('touchend', onTouchEnd, { passive: false })
+  }
   raf = requestAnimationFrame(draw)
 })
 onUnmounted(() => {
   cancelAnimationFrame(raf)
   ro?.disconnect()
+  wrapRef.value?.removeEventListener('touchend', onTouchEnd)
 })
 
 defineExpose({ zoomIn: () => zoomButton(1.25), zoomOut: () => zoomButton(1 / 1.25), fit: fitView })
