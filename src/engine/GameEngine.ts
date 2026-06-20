@@ -205,7 +205,7 @@ export class GameEngine {
   /** 라운드 체력(실측 테이블 × 난이도). 보스 라운드면 보스 1마리 총 체력, 그 외는 마리당 체력. */
   private roundMobHp = (round: number): number => {
     const hellHp = round <= 50 ? ROUND_HP_HELL[round - 1] : endlessHellHp(round)
-    return hellHp * ((this.state.difficulty?.hpMult ?? 5) / 5) // 테이블은 지옥(=500%) 기준
+    return hellHp * ((this.state.difficulty?.hpMult ?? 5) / 5) // 테이블은 어려움/지옥(=500%) 기준
   }
 
   private buildSpawnQueue = (round: number): void => {
