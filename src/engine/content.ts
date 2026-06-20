@@ -33,7 +33,8 @@ export const RACE_BY_ID: Record<RaceId, Race> = {
 
 // ---------------------------------------------------------------------------
 // 타워 정의 — {dps, interval(초), rangeUnit(게임거리), role} 로 간결하게 기술
-// damage = round(dps * interval), attackSpeed = 1/interval
+// damage = round(dps * interval / hits), attackSpeed = 1/interval(=공격 주기 Period의 역수)
+// SC2 정통 모델: 공격속도는 단일 개념(주기 Period). DPS = 발당피해 × (1/Period) × 연사(hits)
 // ---------------------------------------------------------------------------
 
 interface TowerDef {
@@ -141,7 +142,7 @@ const buildBlueprint = (d: TowerDef): TowerBlueprint => ({
   // 발당 피해 = DPS × 공격속도 ÷ 공격횟수 (주기당 hits발 발사 → 총합이 DPS 유지)
   damage: Math.round((d.dps * d.interval) / d.hits),
   hits: d.hits,
-  attackSpeed: +(1 / d.interval).toFixed(2),
+  attackSpeed: 1 / d.interval, // 전체 정밀도(반올림 금지) → 쿨다운=interval, DPS 표시 정확
   // 근접 유닛은 인접 라인에 닿도록 최소 사거리(약 1.3칸) 보장
   range: d.rangeUnit <= 5 ? Math.max(Math.round(d.rangeUnit * RANGE_SCALE), 62) : Math.round(d.rangeUnit * RANGE_SCALE),
   splashRadius: d.splash ?? 0,
