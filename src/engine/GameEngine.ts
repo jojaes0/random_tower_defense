@@ -24,6 +24,7 @@ import type {
   PersonalMission,
   Projectile,
   RaceId,
+  Rarity,
   Tower,
   TowerBlueprint,
   UpgradeLevels,
@@ -273,7 +274,7 @@ export class GameEngine {
     if (m.cooldownRemaining > 0) return this.fail(`${m.name} 쿨다운 ${Math.ceil(m.cooldownRemaining)}초`)
     // 나무위키 기본 체력 × 난이도 배율(난이도에 따라 체력이 달라진다)
     const hp = m.hp * (this.state.difficulty?.hpMult ?? 1)
-    const speed = BALANCE.enemySpeedUnit * RANGE_SCALE
+    const speed = BALANCE.enemySpeedUnit * RANGE_SCALE * (m.speedMul ?? 1)
     // 라운드 중(wave) 소환이면 라운드 종료를 막고, 대기 중(building) 소환이면 라운드와 별개로 진행
     const roundBound = this.state.phase === 'wave'
     this.state.enemies.push(this.makeEnemy(MISSION_BLUEPRINT, hp, speed, m.reward, { isMission: true, missionId: id, roundBound }))
@@ -389,13 +390,21 @@ export class GameEngine {
     return true
   }
 
+  /** 판매 환급 = 등급별 건설 가치의 절반. 합성 누적가(일반100 → 등급마다 ×2: 희귀200·영웅400·전설800·신1600). */
+  sellAmount = (rarity: Rarity): number => {
+    const rank = RARITY_ORDER.indexOf(rarity)
+    const buildValue = BALANCE.towerCost * Math.pow(2, rank)
+    return Math.round(buildValue * BALANCE.sellRatio)
+  }
+
   sellTower = (uid: number): void => {
-    const idx = this.state.towers.findIndex((t) => t.uid === uid)
-    if (idx < 0) return
-    this.state.minerals += Math.round(BALANCE.towerCost * BALANCE.sellRatio)
-    this.state.towers.splice(idx, 1)
+    const t = this.state.towers.find((x) => x.uid === uid)
+    if (!t) return
+    const refund = this.sellAmount(t.blueprint.rarity)
+    this.state.minerals += refund
+    this.state.towers = this.state.towers.filter((x) => x.uid !== uid)
     if (this.state.selectedTowerUid === uid) this.state.selectedTowerUid = null
-    this.state.message = '타워 판매 (+50 미네랄).'
+    this.state.message = `타워 판매 (+${refund} 미네랄).`
     this.onChange()
   }
 

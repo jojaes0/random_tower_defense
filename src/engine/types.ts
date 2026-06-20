@@ -213,6 +213,8 @@ export interface PersonalMissionDef {
   hp: number
   reward: number
   cooldown: number
+  /** 이동속도 배율(미션별 차등, 미지정 시 1.0) */
+  speedMul?: number
 }
 
 /** 런타임 개인 미션 상태 */

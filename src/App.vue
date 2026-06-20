@@ -109,7 +109,7 @@ const start = () => {
 const sel = computed(() => engine.selectedTower)
 const selStats = computed(() => (sel.value ? engine.effectiveStats(sel.value.blueprint, sel.value.dmgBonusMul) : null))
 const sellConfirm = ref(false)
-const sellAmount = Math.round(BALANCE.towerCost * BALANCE.sellRatio)
+const sellAmount = computed(() => (sel.value ? engine.sellAmount(sel.value.blueprint.rarity) : 0))
 const doSell = () => {
   if (sel.value) engine.sellTower(sel.value.uid)
   sellConfirm.value = false

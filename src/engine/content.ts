@@ -244,10 +244,11 @@ export const QUESTS: Quest[] = [
 // ---------------------------------------------------------------------------
 
 // 나무위키 기준 기본 체력(난이도 배율이 곱해짐) / 5분(300초) 쿨다운
+// speedMul: 미션 몹별 이동속도 배율(나무위키 — 암흑광전사는 이속 빠르고 체력 낮음 / 대군주는 무겁고 체력 높음)
 export const PERSONAL_MISSIONS: PersonalMissionDef[] = [
-  { id: 'pm_crab', key: 'A', name: '게', hp: 3000, reward: 100, cooldown: 300 },
-  { id: 'pm_dark', key: 'S', name: '암흑 광전사', hp: 30000, reward: 200, cooldown: 300 },
-  { id: 'pm_overlord', key: 'D', name: '대군주', hp: 175000, reward: 500, cooldown: 300 },
+  { id: 'pm_crab', key: 'A', name: '게', hp: 3000, reward: 100, cooldown: 300, speedMul: 1.0 },
+  { id: 'pm_dark', key: 'S', name: '암흑 광전사', hp: 30000, reward: 200, cooldown: 300, speedMul: 1.4 },
+  { id: 'pm_overlord', key: 'D', name: '대군주', hp: 175000, reward: 500, cooldown: 300, speedMul: 0.85 },
 ]
 
 export const MISSION_BLUEPRINT: EnemyBlueprint = {

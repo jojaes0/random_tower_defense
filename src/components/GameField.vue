@@ -283,6 +283,22 @@ const draw = () => {
       ctx.fill()
     }
     ctx.globalAlpha = 1
+    // 말라쉬 창조의 숨결 — 아군 공격력 버프 활성 시 금색 글로우 + 배지
+    if (s.allyBuffTimer > 0) {
+      ctx.save()
+      ctx.shadowColor = '#fbbf24'
+      ctx.shadowBlur = 8
+      ctx.strokeStyle = '#fbbf24'
+      ctx.lineWidth = 2
+      roundRect(ctx, bx - r - 1, by - r - 1, r * 2 + 2, r * 2 + 2, 7)
+      ctx.stroke()
+      ctx.restore()
+      ctx.fillStyle = '#fbbf24'
+      ctx.font = 'bold 10px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('▲', bx + r - 3, by - r + 3)
+      ctx.textAlign = 'left'
+    }
     // 테두리 = 등급 색 (선택은 사거리 원으로 표시 → 별도 강조 없음, 합성짝만 시안)
     ctx.strokeStyle = isPartner ? '#22d3ee' : bp.color
     ctx.lineWidth = isPartner ? 4 : 3
@@ -321,12 +337,31 @@ const draw = () => {
     ctx.strokeStyle = e.isMission ? '#fdba74' : '#000'
     ctx.lineWidth = e.isMission ? 2 : 1
     ctx.stroke()
+    // 디버프 표시: 기절(노랑)·감속(하늘)·약화(주황 점선 외곽)
     if (e.stunTimer > 0 || e.slowTimer > 0) {
       ctx.beginPath()
       ctx.arc(e.pos.x, e.pos.y, e.blueprint.radius + 3, 0, Math.PI * 2)
       ctx.strokeStyle = e.stunTimer > 0 ? '#fde047' : '#7dd3fc'
       ctx.lineWidth = 2
+      ctx.setLineDash([])
       ctx.stroke()
+      // 감속 시 눈송이 표식
+      if (e.slowTimer > 0 && e.stunTimer <= 0) {
+        ctx.fillStyle = '#7dd3fc'
+        ctx.font = '9px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText('❄', e.pos.x, e.pos.y - e.blueprint.radius - 13)
+        ctx.textAlign = 'left'
+      }
+    }
+    if (e.ampTimer > 0) {
+      ctx.beginPath()
+      ctx.arc(e.pos.x, e.pos.y, e.blueprint.radius + 5.5, 0, Math.PI * 2)
+      ctx.strokeStyle = '#fb7185'
+      ctx.lineWidth = 1.5
+      ctx.setLineDash([3, 3])
+      ctx.stroke()
+      ctx.setLineDash([])
     }
     const w = e.blueprint.radius * 2
     const ratio = Math.max(0, e.hp / e.maxHp)
