@@ -223,17 +223,12 @@ const draw = () => {
   ctx.setLineDash([8, 10])
   ctx.stroke()
   ctx.setLineDash([])
-  ctx.font = 'bold 11px sans-serif'
+  ctx.font = 'bold 13px sans-serif'
   ctx.textAlign = 'center'
   ctx.fillStyle = '#22c55e'
-  ctx.fillText('▶ 입구', PATH_START.x + 14, PATH_START.y - 12)
+  ctx.fillText('시작', PATH_START.x + 16, PATH_START.y - 12)
   ctx.fillStyle = '#ef4444'
-  ctx.beginPath()
-  ctx.arc(PATH_END.x, PATH_END.y, 9, 0, Math.PI * 2)
-  ctx.fillStyle = 'rgba(239,68,68,0.25)'
-  ctx.fill()
-  ctx.fillStyle = '#ef4444'
-  ctx.fillText('출구', PATH_END.x, PATH_END.y - 14)
+  ctx.fillText('종료', PATH_END.x, PATH_END.y - 12)
   ctx.textAlign = 'left'
 
   const sel = props.engine.selectedTower
@@ -460,7 +455,7 @@ defineExpose({ zoomIn: () => zoomButton(1.25), zoomOut: () => zoomButton(1 / 1.2
 .zoom {
   position: absolute;
   right: 10px;
-  bottom: 10px;
+  bottom: 72px; /* 하단 바 위로 */
   display: flex;
   flex-direction: column;
   gap: 6px;

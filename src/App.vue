@@ -12,7 +12,7 @@ const buildMode = ref<'idle' | 'common' | 'hero' | 'merge'>('idle')
 const heroId = ref<string | null>(null)
 const showMenu = ref(false)
 const tab = ref<'mission' | 'terrazine' | 'quest'>('mission')
-const dockOpen = ref(true)
+const upgOpen = ref(false)
 
 const setCommon = () => {
   buildMode.value = buildMode.value === 'common' ? 'idle' : 'common'
@@ -77,7 +77,6 @@ const selStats = computed(() => (sel.value ? engine.effectiveStats(sel.value.blu
 
 const upgPct = (race: RaceId) => +(state.upgrades[race] * BALANCE.upgradeBonusPerLevel * 100).toFixed(1)
 const raceNames = (races: RaceId[]) => races.map((r) => RACES.find((x) => x.id === r)?.name).join('·')
-const roleLabel = (r: string) => (r === 'line' ? '라인' : r === 'boss' ? '보스' : '밸런스')
 const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
 const roundLabel = computed(() => (state.endless ? `${state.round} ∞` : `${state.round}/${BALANCE.totalRounds}`))
 const fmt = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : `${Math.round(n)}`)
@@ -87,10 +86,6 @@ const menuAlert = computed(() => {
   const canMission = state.missions.some((m) => !m.active && m.cooldownRemaining <= 0)
   return canMission || state.terrazine >= 1
 })
-const openTab = (t: typeof tab.value) => {
-  tab.value = t
-  showMenu.value = true
-}
 </script>
 
 <template>
@@ -140,18 +135,27 @@ const openTab = (t: typeof tab.value) => {
       </span>
     </div>
 
-    <!-- 우측 도크 (오버레이, 접기 가능) -->
-    <button v-if="!dockOpen" class="dock-tab" @click="dockOpen = true">‹</button>
-    <aside v-show="dockOpen" class="dock">
-      <button class="dock-collapse" @click="dockOpen = false">›</button>
-
-      <div class="dock-build">
-        <button class="dbtn" :class="{ active: buildMode === 'common' }" :disabled="state.minerals < BALANCE.towerCost" @click="setCommon">🎲 일반 타워<small>{{ BALANCE.towerCost }}</small></button>
-        <button class="dbtn" :class="{ active: buildMode === 'merge' }" @click="setMerge">⚙ 합성 모드<small>2개 합성</small></button>
-        <button class="dbtn" :disabled="state.minerals < BALANCE.gasExchangeCost" @click="engine.gambleGas()">⛽ 가스 도박<small>{{ BALANCE.gasExchangeCost }}</small></button>
+    <!-- 선택 타워 정보 (우상단 오버레이) -->
+    <aside v-if="sel && selStats" class="inspector-ov">
+      <div class="ins-name" :style="{ color: sel.blueprint.color }">
+        <span class="ins-icon">{{ sel.blueprint.icon }}</span>{{ sel.blueprint.name }}
+        <span class="badge" :style="{ background: RARITY_META[sel.blueprint.rarity].color }">{{ RARITY_META[sel.blueprint.rarity].label }}</span>
+        <button class="ins-close" @click="engine.selectTower(null)">✕</button>
       </div>
+      <div class="ins-sub">{{ raceNames(sel.blueprint.races) }}{{ sel.blueprint.races.length > 1 ? ' (혼합)' : '' }}</div>
+      <p v-if="sel.blueprint.skillDesc" class="skill">✦ {{ sel.blueprint.skillDesc }}<span v-if="sel.dmgBonusMul > 1"> ×{{ sel.dmgBonusMul.toFixed(0) }}</span></p>
+      <ul class="ins-stats">
+        <li><span>DPS</span><b>{{ (selStats.damage * selStats.attackSpeed).toFixed(0) }}</b></li>
+        <li><span>사거리</span><b>{{ selStats.range.toFixed(0) }}</b></li>
+        <li><span>범위</span><b>{{ selStats.splashRadius > 0 ? selStats.splashRadius.toFixed(0) : '단일' }}</b></li>
+        <li><span>보스</span><b>×{{ selStats.bonusVsBoss.toFixed(1) }}</b></li>
+      </ul>
+      <button class="sell" @click="engine.sellTower(sel.uid)">판매 +{{ Math.round(BALANCE.towerCost * BALANCE.sellRatio) }}</button>
+    </aside>
 
-      <div class="dock-upg">
+    <!-- 하단 바: 일반 타워 / 합성 모드 / 가스 도박 / 업그레이드(위로 펼침) -->
+    <div class="bottombar">
+      <div v-if="upgOpen" class="upg-pop">
         <div class="dock-label">업그레이드 <span class="muted">가스 {{ state.gas }}</span></div>
         <button v-for="r in RACES" :key="r.id" class="upgb" :disabled="state.gas < engine.upgradeCost(r.id)" @click="engine.buyUpgrade(r.id)">
           <span class="upgb-r" :style="{ color: r.color }">{{ r.short }}</span>
@@ -159,30 +163,11 @@ const openTab = (t: typeof tab.value) => {
           <span class="upgb-cost">▲{{ engine.upgradeCost(r.id) }}</span>
         </button>
       </div>
-
-      <div class="inspector" v-if="sel && selStats">
-        <div class="ins-name" :style="{ color: sel.blueprint.color }">
-          <span class="ins-icon">{{ sel.blueprint.icon }}</span>{{ sel.blueprint.name }}
-          <span class="badge" :style="{ background: RARITY_META[sel.blueprint.rarity].color }">{{ RARITY_META[sel.blueprint.rarity].label }}</span>
-        </div>
-        <div class="ins-sub">{{ raceNames(sel.blueprint.races) }}{{ sel.blueprint.races.length > 1 ? ' (혼합)' : '' }} · {{ roleLabel(sel.blueprint.role) }}</div>
-        <p v-if="sel.blueprint.skillDesc" class="skill">✦ {{ sel.blueprint.skillDesc }}<span v-if="sel.dmgBonusMul > 1"> ×{{ sel.dmgBonusMul.toFixed(0) }}</span></p>
-        <ul class="ins-stats">
-          <li><span>DPS</span><b>{{ (selStats.damage * selStats.attackSpeed).toFixed(0) }}</b></li>
-          <li><span>사거리</span><b>{{ selStats.range.toFixed(0) }}</b></li>
-          <li><span>범위</span><b>{{ selStats.splashRadius > 0 ? selStats.splashRadius.toFixed(0) : '단일' }}</b></li>
-          <li><span>보스</span><b>×{{ selStats.bonusVsBoss.toFixed(1) }}</b></li>
-        </ul>
-        <button class="sell" @click="engine.sellTower(sel.uid)">판매 +{{ Math.round(BALANCE.towerCost * BALANCE.sellRatio) }}</button>
-      </div>
-      <p v-else class="dock-hint">타워를 탭하면 정보·합성.</p>
-
-      <div class="dock-menu">
-        <button @click="openTab('mission')">🎯 미션</button>
-        <button @click="openTab('terrazine')">◆ 테라진</button>
-        <button @click="openTab('quest')">📜 퀘스트</button>
-      </div>
-    </aside>
+      <button class="bbtn" :class="{ active: buildMode === 'common' }" :disabled="state.minerals < BALANCE.towerCost" @click="setCommon"><i>🎲</i><span>일반 타워</span></button>
+      <button class="bbtn" :class="{ active: buildMode === 'merge' }" @click="setMerge"><i>⚙</i><span>합성 모드</span></button>
+      <button class="bbtn" :disabled="state.minerals < BALANCE.gasExchangeCost" @click="engine.gambleGas()"><i>⛽</i><span>가스 도박</span></button>
+      <button class="bbtn" :class="{ active: upgOpen }" @click="upgOpen = !upgOpen"><i>⬆</i><span>업그레이드</span></button>
+    </div>
 
     <!-- 드로어 메뉴 -->
     <div v-if="showMenu" class="drawer-backdrop" @click.self="showMenu = false">
@@ -301,38 +286,36 @@ const openTab = (t: typeof tab.value) => {
 .preview .cd { margin-left: 6px; color: #fbbf24; }
 .preview .final-warn { margin-left: 6px; color: #f87171; font-weight: 700; }
 
-/* 도크 오버레이 */
-.dock-tab { position: absolute; top: 50%; right: 0; transform: translateY(-50%); z-index: 11; width: 22px; height: 60px; background: rgba(17, 26, 46, 0.92); border: 1px solid #1f2d45; border-right: none; border-radius: 8px 0 0 8px; color: #cbd5e1; cursor: pointer; }
-.dock { position: absolute; top: 74px; right: 8px; bottom: 8px; width: 200px; z-index: 8; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 8px; background: rgba(11, 18, 32, 0.92); border: 1px solid #1f2d45; border-radius: 12px; }
-.dock-collapse { align-self: flex-end; width: 26px; height: 24px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 6px; color: #cbd5e1; cursor: pointer; margin-bottom: -2px; }
-.dock-build { display: flex; flex-direction: column; gap: 6px; }
-.dbtn { text-align: left; padding: 9px 10px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 8px; color: #e2e8f0; cursor: pointer; font-size: 13px; }
-.dbtn small { float: right; color: #8aa0c0; }
-.dbtn.active { border-color: #60a5fa; background: #15233f; }
-.dbtn:disabled { opacity: 0.45; cursor: not-allowed; }
-.dock-upg { display: flex; flex-direction: column; gap: 5px; }
-.dock-label { font-size: 11px; color: #cbd5e1; display: flex; justify-content: space-between; }
-.muted { color: #64748b; font-weight: 400; }
-.upgb { display: flex; align-items: center; gap: 6px; padding: 7px 9px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 7px; color: #e2e8f0; cursor: pointer; font-size: 12px; }
-.upgb-r { font-weight: 700; width: 14px; }
-.upgb-lv { flex: 1; color: #cbd5e1; }
-.upgb-cost { color: #86efac; }
-.upgb:disabled { opacity: 0.4; cursor: not-allowed; }
-.inspector { background: #0e1626; border: 1px solid #1f2d45; border-radius: 8px; padding: 10px; }
+/* 선택 타워 정보 (우상단 오버레이) */
+.inspector-ov { position: absolute; top: 50px; right: 8px; z-index: 9; width: 190px; max-width: 62vw; background: rgba(14, 22, 38, 0.95); border: 1px solid #1f2d45; border-radius: 10px; padding: 10px; }
 .ins-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .ins-icon { font-size: 17px; }
+.ins-close { margin-left: auto; width: 20px; height: 20px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 5px; color: #94a3b8; cursor: pointer; font-size: 11px; }
 .badge { font-size: 10px; color: #0b1220; padding: 1px 5px; border-radius: 5px; font-weight: 700; }
 .ins-sub { font-size: 11px; color: #94a3b8; margin-top: 3px; }
 .skill { font-size: 11px; color: #fbbf24; margin: 6px 0 0; }
 .ins-stats { list-style: none; padding: 0; margin: 8px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; }
 .ins-stats li { display: flex; justify-content: space-between; font-size: 12px; }
 .ins-stats span { color: #8aa0c0; }
-.merge { width: 100%; padding: 8px; margin-bottom: 5px; background: #0e7490; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; }
-.merge:disabled { background: #1e293b; color: #64748b; cursor: not-allowed; }
 .sell { width: 100%; padding: 7px; background: #7f1d1d; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 12px; }
-.dock-hint { font-size: 11px; color: #64748b; padding: 6px; }
-.dock-menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: auto; }
-.dock-menu button { padding: 9px 2px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 7px; color: #cbd5e1; cursor: pointer; font-size: 11px; }
+
+/* 하단 바 */
+.bottombar { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 9; display: flex; gap: 6px; }
+.bbtn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px; background: rgba(11, 18, 32, 0.95); border: 1px solid #1f2d45; border-radius: 10px; color: #e2e8f0; cursor: pointer; }
+.bbtn i { font-style: normal; font-size: 18px; line-height: 1; }
+.bbtn span { font-size: 11px; white-space: nowrap; }
+.bbtn.active { border-color: #60a5fa; background: #15233f; }
+.bbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* 업그레이드 위로 펼침 */
+.upg-pop { position: absolute; right: 0; bottom: calc(100% + 6px); width: 220px; max-width: 84vw; background: rgba(11, 18, 32, 0.97); border: 1px solid #1f2d45; border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+.dock-label { font-size: 11px; color: #cbd5e1; display: flex; justify-content: space-between; }
+.muted { color: #64748b; font-weight: 400; }
+.upgb { display: flex; align-items: center; gap: 6px; padding: 8px 9px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 7px; color: #e2e8f0; cursor: pointer; font-size: 12px; }
+.upgb-r { font-weight: 700; width: 14px; }
+.upgb-lv { flex: 1; color: #cbd5e1; }
+.upgb-cost { color: #86efac; }
+.upgb:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* 드로어 */
 .drawer-backdrop { position: fixed; inset: 0; background: rgba(2, 6, 16, 0.6); display: flex; justify-content: flex-end; z-index: 20; }
