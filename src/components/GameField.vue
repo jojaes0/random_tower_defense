@@ -155,17 +155,16 @@ const handleTap = (clientX: number, clientY: number) => {
   const pos = worldFromClient(clientX, clientY)
   const hit = props.engine.state.towers.find((t) => Math.hypot(t.pos.x - pos.x, t.pos.y - pos.y) <= GRID.size / 2)
   if (props.buildMode === 'common') {
-    if (hit) return void props.engine.selectTower(hit.uid) // 설치 모드에서 이미 설치된 칸 → 정보
+    if (hit) return // 설치 모드에서 이미 설치된 칸 → 아무 동작 안 함(정보 X)
     return void props.engine.buildCommonTower(pos)
   }
   if (props.buildMode === 'hero' && props.heroId) {
-    if (hit) return void props.engine.selectTower(hit.uid)
+    if (hit) return // 영웅 설치 모드에서 이미 설치된 칸 → 동작 없음
     return void props.engine.buildHeroTower(props.heroId, pos)
   }
   if (props.buildMode === 'merge') {
     if (!hit) return void props.engine.selectTower(null)
-    if (props.engine.mergePartner(hit.uid)) return void props.engine.mergeTower(hit.uid) // 합성(정보 안 띄움)
-    return void props.engine.selectTower(hit.uid) // 짝 없으면 정보 표시
+    return void props.engine.mergeTower(hit.uid) // 짝 있으면 합성, 없으면 실패 효과(정보 X)
   }
   props.engine.selectTower(hit ? hit.uid : null)
 }
