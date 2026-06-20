@@ -142,7 +142,8 @@ const buildBlueprint = (d: TowerDef): TowerBlueprint => ({
   damage: Math.round((d.dps * d.interval) / d.hits),
   hits: d.hits,
   attackSpeed: +(1 / d.interval).toFixed(2),
-  range: Math.round(d.rangeUnit * RANGE_SCALE),
+  // 근접 유닛은 인접 라인에 닿도록 최소 사거리(약 1.3칸) 보장
+  range: d.rangeUnit <= 5 ? Math.max(Math.round(d.rangeUnit * RANGE_SCALE), 62) : Math.round(d.rangeUnit * RANGE_SCALE),
   splashRadius: d.splash ?? 0,
   bonusVsBoss: roleBoss[d.role],
   color: RARITY_META[d.rarity].color,

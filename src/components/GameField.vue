@@ -429,7 +429,7 @@ const draw = () => {
     const sz = 2.4 + p.rank * 0.8
     ctx.save()
     ctx.shadowColor = p.color
-    ctx.shadowBlur = 4 + p.rank * 4
+    ctx.shadowBlur = 2 + p.rank * 2.5
     ctx.fillStyle = p.color
     ctx.beginPath()
     ctx.arc(x, y, sz, 0, Math.PI * 2)
@@ -451,51 +451,42 @@ const draw = () => {
     const k = Math.min(age / dur, 1)
     ctx.save()
     if (im.melee) {
+      // 근접: 타워→적 베기(돌진) + 적 위치 슬래시
       ctx.globalAlpha = 1 - k
       ctx.strokeStyle = '#ffffff'
-      ctx.lineWidth = 2.5 + im.rank
-      const rr = 6 + k * 12
+      ctx.lineWidth = 2.5
+      const sx = im.fromX + (im.x - im.fromX) * (0.25 + k * 0.5)
+      const sy = im.fromY + (im.y - im.fromY) * (0.25 + k * 0.5)
       ctx.beginPath()
-      ctx.arc(im.x, im.y, rr, -0.9, 0.5)
+      ctx.moveTo(sx, sy)
+      ctx.lineTo(im.x, im.y)
       ctx.stroke()
+      ctx.lineWidth = 2
       ctx.beginPath()
-      ctx.arc(im.x, im.y, rr * 0.7, 2.2, 3.6)
+      ctx.arc(im.x, im.y, 7 + k * 9, -1.0, 0.5)
       ctx.stroke()
     } else if (im.splash > 0) {
+      // 일반 스플래시 — 은은한 링 + 옅은 채움(요란하지 않게)
       const R = im.splash
-      ctx.globalAlpha = (1 - k) * 0.5
+      ctx.globalAlpha = (1 - k) * 0.13
       ctx.fillStyle = im.color
       ctx.beginPath()
-      ctx.arc(im.x, im.y, R * (0.3 + k * 0.7), 0, Math.PI * 2)
+      ctx.arc(im.x, im.y, R * 0.92, 0, Math.PI * 2)
       ctx.fill()
-      ctx.globalAlpha = 1 - k
+      ctx.globalAlpha = (1 - k) * 0.55
       ctx.strokeStyle = im.color
-      ctx.lineWidth = 2 + im.rank * 0.6
+      ctx.lineWidth = 1.5
       ctx.beginPath()
-      ctx.arc(im.x, im.y, R * (0.4 + k * 0.6), 0, Math.PI * 2)
+      ctx.arc(im.x, im.y, R * (0.55 + k * 0.45), 0, Math.PI * 2)
       ctx.stroke()
-      ctx.fillStyle = '#ffffff'
-      const np = 5 + im.rank * 2
-      for (let i = 0; i < np; i++) {
-        const a = (Math.PI * 2 * i) / np
-        const d = R * (0.3 + k * 0.7)
-        ctx.beginPath()
-        ctx.arc(im.x + Math.cos(a) * d, im.y + Math.sin(a) * d, 1.6 * (1 - k) + 0.5, 0, Math.PI * 2)
-        ctx.fill()
-      }
     } else {
-      ctx.globalAlpha = 1 - k
+      // 단일 피격 — 작은 플래시 링
+      ctx.globalAlpha = (1 - k) * 0.7
       ctx.strokeStyle = im.color
-      ctx.lineWidth = 1.5 + im.rank * 0.5
+      ctx.lineWidth = 1.5
       ctx.beginPath()
-      ctx.arc(im.x, im.y, 5 + k * (8 + im.rank * 3), 0, Math.PI * 2)
+      ctx.arc(im.x, im.y, 4 + k * 6, 0, Math.PI * 2)
       ctx.stroke()
-      if (im.rank >= 3) {
-        ctx.fillStyle = '#ffffff'
-        ctx.beginPath()
-        ctx.arc(im.x, im.y, 2.2 * (1 - k) + 0.5, 0, Math.PI * 2)
-        ctx.fill()
-      }
     }
     ctx.restore()
     if (age >= dur) {

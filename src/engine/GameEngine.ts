@@ -62,6 +62,8 @@ export interface Impact {
   id: number
   x: number
   y: number
+  fromX: number // 공격자 위치(근접 베기 모션용)
+  fromY: number
   splash: number // 0이면 단일
   color: string
   rank: number
@@ -136,8 +138,8 @@ export class GameEngine {
     if (i >= 0) this.state.effects.splice(i, 1)
   }
 
-  private addImpact = (x: number, y: number, splash: number, color: string, rank: number, melee: boolean): void => {
-    this.state.impacts.push({ id: this.nextUid(), x, y, splash, color, rank, melee })
+  private addImpact = (p: Projectile, x: number, y: number): void => {
+    this.state.impacts.push({ id: this.nextUid(), x, y, fromX: p.from.x, fromY: p.from.y, splash: p.splashRadius, color: p.color, rank: p.rank, melee: p.melee })
     if (this.state.impacts.length > 80) this.state.impacts.shift()
   }
 
@@ -603,7 +605,7 @@ export class GameEngine {
   private resolveHit = (p: Projectile): void => {
     const primary = this.state.enemies.find((e) => e.uid === p.targetUid)
     const impact = primary ? primary.pos : p.to
-    this.addImpact(impact.x, impact.y, p.splashRadius, p.color, p.rank, p.melee)
+    this.addImpact(p, impact.x, impact.y)
     // 피해 대상 집합 결정
     let targets: Enemy[]
     if (p.splashRadius > 0) {
