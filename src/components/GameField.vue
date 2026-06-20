@@ -134,6 +134,15 @@ const onPointerUp = (e: PointerEvent) => {
   }
   gesture = pointers.size === 2 ? 'pinch' : pointers.size === 1 ? 'pan' : 'none'
   if (pointers.size < 2) lastDist = 0
+  // 핀치(2) → 한 손가락(1) 복귀: 남은 손가락을 새 팬 기준으로 리셋하고
+  // moved=true로 탭을 억제(핀치 직후 손가락을 떼며 발생하는 의도치 않은 건설 방지)
+  if (sizeBefore === 2 && pointers.size === 1) {
+    const [p] = [...pointers.values()]
+    downX = p.x
+    downY = p.y
+    moved = true
+    lastMoveVX = lastMoveVY = 0
+  }
 }
 const onWheel = (e: WheelEvent) => {
   e.preventDefault()
@@ -403,6 +412,11 @@ const draw = () => {
       props.engine.removeImpact(im.id)
     }
   }
+  // 엔진이 상한(80) 초과로 밀어낸 임팩트의 타이머 잔여분 정리(누수 방지)
+  if (impactStart.size > s.impacts.length) {
+    const live = new Set(s.impacts.map((i) => i.id))
+    for (const id of impactStart.keys()) if (!live.has(id)) impactStart.delete(id)
+  }
 
   // 합성 효과
   for (const fx of s.effects) {
@@ -444,6 +458,11 @@ const draw = () => {
       effectStart.delete(fx.id)
       props.engine.removeEffect(fx.id)
     }
+  }
+  // 상한(12) 초과로 밀려난 효과 타이머 정리
+  if (effectStart.size > s.effects.length) {
+    const live = new Set(s.effects.map((f) => f.id))
+    for (const id of effectStart.keys()) if (!live.has(id)) effectStart.delete(id)
   }
 
   // 건설 커서(셀 스냅) — 마우스 배치 모드만
