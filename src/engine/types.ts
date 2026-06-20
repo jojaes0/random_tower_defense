@@ -33,7 +33,10 @@ export interface Difficulty {
 export interface TowerBlueprint {
   id: string
   name: string
+  /** 대표 종족(표시·기본색용) */
   race: RaceId
+  /** 업그레이드 적용 종족 목록(혼종은 여러 개 → 모두 합산 적용) */
+  races: RaceId[]
   rarity: Rarity
   role: Role
   /** 발당 피해 */

@@ -259,11 +259,22 @@ const draw = () => {
     const bx = t.pos.x
     const by = t.pos.y
     const r = 16
-    // 본체 = 종족 색
-    ctx.fillStyle = raceColor(bp.race)
+    // 본체 = 종족 색 (혼종 등 다종족은 좌우로 나눠 칠함)
     ctx.globalAlpha = 0.4
-    roundRect(ctx, bx - r, by - r, r * 2, r * 2, 6)
-    ctx.fill()
+    if (bp.races.length > 1) {
+      ctx.save()
+      roundRect(ctx, bx - r, by - r, r * 2, r * 2, 6)
+      ctx.clip()
+      ctx.fillStyle = raceColor(bp.races[0])
+      ctx.fillRect(bx - r, by - r, r, r * 2)
+      ctx.fillStyle = raceColor(bp.races[1])
+      ctx.fillRect(bx, by - r, r, r * 2)
+      ctx.restore()
+    } else {
+      ctx.fillStyle = raceColor(bp.race)
+      roundRect(ctx, bx - r, by - r, r * 2, r * 2, 6)
+      ctx.fill()
+    }
     ctx.globalAlpha = 1
     // 테두리 = 등급 색
     ctx.strokeStyle = isSel ? '#ffffff' : isPartner ? '#22d3ee' : bp.color
@@ -274,13 +285,15 @@ const draw = () => {
     ctx.textBaseline = 'middle'
     ctx.fillStyle = '#fff'
     ctx.fillText(bp.icon, bx, by - 1)
-    // 종족 약자 — 종족색 칩 위에 흰 글자
-    ctx.fillStyle = raceColor(bp.race)
-    roundRect(ctx, bx - r + 1, by - r + 1, 11, 9, 2)
+    // 종족 약자 칩 (혼종은 'PZ')
+    const rs = bp.races.map(raceShort).join('')
+    const chipW = 5 + rs.length * 6
+    ctx.fillStyle = bp.races.length > 1 ? 'rgba(2,6,16,0.85)' : raceColor(bp.race)
+    roundRect(ctx, bx - r + 1, by - r + 1, chipW, 9, 2)
     ctx.fill()
     ctx.font = 'bold 8px sans-serif'
     ctx.fillStyle = '#fff'
-    ctx.fillText(raceShort(bp.race), bx - r + 6.5, by - r + 6)
+    ctx.fillText(rs, bx - r + 1 + chipW / 2, by - r + 6)
     ctx.font = '8px sans-serif'
     ctx.textBaseline = 'top'
     const lw = ctx.measureText(bp.name).width + 6

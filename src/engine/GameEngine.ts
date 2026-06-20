@@ -400,7 +400,8 @@ export class GameEngine {
   // -------------------------------------------------------------------------
 
   effectiveStats = (bp: TowerBlueprint, dmgBonusMul = 1) => {
-    const lv = this.state.upgrades[bp.race]
+    // 혼종 등 다종족은 각 종족 업그레이드를 모두 합산 적용
+    const lv = bp.races.reduce((sum, r) => sum + this.state.upgrades[r], 0)
     const dmgMul = 1 + lv * BALANCE.upgradeBonusPerLevel // 단리
     return {
       damage: bp.damage * dmgMul * dmgBonusMul,

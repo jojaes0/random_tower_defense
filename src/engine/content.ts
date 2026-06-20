@@ -40,6 +40,8 @@ interface TowerDef {
   id: string
   name: string
   race: RaceId
+  /** 혼종처럼 여러 종족 업그레이드를 받는 경우 지정(미지정 시 [race]) */
+  races?: RaceId[]
   rarity: Rarity
   role: Role
   dps: number
@@ -92,7 +94,7 @@ const DEFS: TowerDef[] = [
   { id: 'hydra_l', name: '히드라리스크', race: 'zerg', rarity: 'legend', role: 'balance', dps: 1428, interval: 0.4, rangeUnit: 7.2 },
   { id: 'immortal', name: '불멸자', race: 'protoss', rarity: 'legend', role: 'boss', dps: 1670, interval: 0.5, rangeUnit: 7.2 },
   { id: 'destroyer', name: '파괴자', race: 'protoss', rarity: 'legend', role: 'line', dps: 1268, interval: 0.5, rangeUnit: 7.2 },
-  { id: 'hybrid', name: '혼종', race: 'zerg', rarity: 'legend', role: 'balance', dps: 1680, interval: 0.5, rangeUnit: 9.6 },
+  { id: 'hybrid', name: '혼종', race: 'protoss', races: ['protoss', 'zerg'], rarity: 'legend', role: 'balance', dps: 1680, interval: 0.5, rangeUnit: 9.6 },
 
   // ── 신(god) 9 — 실제 DPS·사거리 ─────────────────────────────────
   { id: 'lurker', name: '가시지옥', race: 'zerg', rarity: 'god', role: 'line', dps: 2812, interval: 0.5, rangeUnit: 10.8 },
@@ -129,6 +131,7 @@ const buildBlueprint = (d: TowerDef): TowerBlueprint => ({
   id: d.id,
   name: d.name,
   race: d.race,
+  races: d.races ?? [d.race],
   rarity: d.rarity,
   role: d.role,
   damage: Math.round(d.dps * d.interval),

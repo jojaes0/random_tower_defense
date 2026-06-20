@@ -77,6 +77,7 @@ const selStats = computed(() => (sel.value ? engine.effectiveStats(sel.value.blu
 const partner = computed(() => (sel.value ? engine.mergePartner(sel.value.uid) : null))
 
 const upgPct = (race: RaceId) => +(state.upgrades[race] * BALANCE.upgradeBonusPerLevel * 100).toFixed(1)
+const raceNames = (races: RaceId[]) => races.map((r) => RACES.find((x) => x.id === r)?.name).join('·')
 const roleLabel = (r: string) => (r === 'line' ? '라인' : r === 'boss' ? '보스' : '밸런스')
 const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
 const roundLabel = computed(() => (state.endless ? `${state.round} ∞` : `${state.round}/${BALANCE.totalRounds}`))
@@ -165,7 +166,7 @@ const openTab = (t: typeof tab.value) => {
           <span class="ins-icon">{{ sel.blueprint.icon }}</span>{{ sel.blueprint.name }}
           <span class="badge" :style="{ background: RARITY_META[sel.blueprint.rarity].color }">{{ RARITY_META[sel.blueprint.rarity].label }}</span>
         </div>
-        <div class="ins-sub">{{ RACES.find((r) => r.id === sel!.blueprint.race)?.name }} · {{ roleLabel(sel.blueprint.role) }}</div>
+        <div class="ins-sub">{{ raceNames(sel.blueprint.races) }}{{ sel.blueprint.races.length > 1 ? ' (혼합)' : '' }} · {{ roleLabel(sel.blueprint.role) }}</div>
         <p v-if="sel.blueprint.skillDesc" class="skill">✦ {{ sel.blueprint.skillDesc }}<span v-if="sel.dmgBonusMul > 1"> ×{{ sel.dmgBonusMul.toFixed(0) }}</span></p>
         <ul class="ins-stats">
           <li><span>DPS</span><b>{{ (selStats.damage * selStats.attackSpeed).toFixed(0) }}</b></li>
