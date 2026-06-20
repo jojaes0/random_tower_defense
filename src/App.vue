@@ -74,7 +74,6 @@ const start = () => {
 
 const sel = computed(() => engine.selectedTower)
 const selStats = computed(() => (sel.value ? engine.effectiveStats(sel.value.blueprint, sel.value.dmgBonusMul) : null))
-const partner = computed(() => (sel.value ? engine.mergePartner(sel.value.uid) : null))
 
 const upgPct = (race: RaceId) => +(state.upgrades[race] * BALANCE.upgradeBonusPerLevel * 100).toFixed(1)
 const raceNames = (races: RaceId[]) => races.map((r) => RACES.find((x) => x.id === r)?.name).join('·')
@@ -174,7 +173,6 @@ const openTab = (t: typeof tab.value) => {
           <li><span>범위</span><b>{{ selStats.splashRadius > 0 ? selStats.splashRadius.toFixed(0) : '단일' }}</b></li>
           <li><span>보스</span><b>×{{ selStats.bonusVsBoss.toFixed(1) }}</b></li>
         </ul>
-        <button class="merge" :disabled="!partner" @click="engine.mergeTower(sel.uid)">{{ partner ? '⚙ 합성!' : '합성 불가' }}</button>
         <button class="sell" @click="engine.sellTower(sel.uid)">판매 +{{ Math.round(BALANCE.towerCost * BALANCE.sellRatio) }}</button>
       </div>
       <p v-else class="dock-hint">타워를 탭하면 정보·합성.</p>

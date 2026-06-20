@@ -254,7 +254,6 @@ const draw = () => {
   ctx.textAlign = 'center'
   for (const t of s.towers) {
     const bp = t.blueprint
-    const isSel = sel?.uid === t.uid
     const isPartner = partner?.uid === t.uid
     const bx = t.pos.x
     const by = t.pos.y
@@ -276,9 +275,9 @@ const draw = () => {
       ctx.fill()
     }
     ctx.globalAlpha = 1
-    // 테두리 = 등급 색
-    ctx.strokeStyle = isSel ? '#ffffff' : isPartner ? '#22d3ee' : bp.color
-    ctx.lineWidth = isSel || isPartner ? 4 : 3
+    // 테두리 = 등급 색 (선택은 사거리 원으로 표시 → 별도 강조 없음, 합성짝만 시안)
+    ctx.strokeStyle = isPartner ? '#22d3ee' : bp.color
+    ctx.lineWidth = isPartner ? 4 : 3
     roundRect(ctx, bx - r, by - r, r * 2, r * 2, 6)
     ctx.stroke()
     ctx.font = '17px "Segoe UI Emoji", sans-serif'
