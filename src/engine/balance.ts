@@ -84,6 +84,14 @@ export const BALANCE = {
   dukeFastCdMul: 0.5, // 빠른 모드 쿨다운 배율
   dukeAoeSplashMul: 1.6, // 범위 모드 splash 배율
 
+  // 약화/버프(🟡 수치 임의)
+  ampDuration: 2.5, // 받는 피해 증폭 지속(초)
+  malashChance: 0.15, // 말라쉬 숨결 발동 확률(둘 중 하나)
+  allyBuffMul: 1.2, // 말라쉬 창조의 숨결 — 아군 공격력 배율
+  allyBuffDuration: 4, // 창조의 숨결 지속(초)
+  malashSlowFac: 0.6, // 파괴의 숨결 감속 계수
+  malashAmpFac: 1.2, // 파괴의 숨결 받는 피해 증폭
+
   // 시간 경과 퀘스트(초)
   timeQuest7: 7 * 60,
   timeQuest12: 12 * 60,

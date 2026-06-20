@@ -58,6 +58,9 @@ export interface GameState {
   effects: GameEffect[]
   impacts: Impact[]
   message: string
+  /** 말라쉬 창조의 숨결 — 아군 공격력 버프 남은 시간(초)·배율 */
+  allyBuffTimer: number
+  allyBuffMul: number
 }
 
 /** 피격 임팩트(공격 명중 위치 연출) */
@@ -129,6 +132,8 @@ export class GameEngine {
     effects: [],
     impacts: [],
     message: '난이도를 선택하세요.',
+    allyBuffTimer: 0,
+    allyBuffMul: 1,
   })
 
   private addEffect = (pos: Vec2, kind: GameEffect['kind']): void => {
@@ -247,6 +252,8 @@ export class GameEngine {
     slowTimer: 0,
     slowFactor: 1,
     stunTimer: 0,
+    ampTimer: 0,
+    ampFactor: 1,
   })
 
   // -------------------------------------------------------------------------
@@ -324,7 +331,7 @@ export class GameEngine {
   }
 
   private placeTower = (bp: TowerBlueprint, pos: Vec2): Tower => {
-    const tower: Tower = { uid: this.nextUid(), blueprint: bp, pos, cooldown: 0, cooldown2: 0, dmgBonusMul: 1, modeTimer: 0, modeType: null }
+    const tower: Tower = { uid: this.nextUid(), blueprint: bp, pos, cooldown: 0, cooldown2: 0, dmgBonusMul: 1, modeTimer: 0, modeType: null, lastTargetUid: -1 }
     this.state.towers.push(tower)
     // 설치·합성 시 자동 선택(정보 표시)하지 않음 — 사용자가 직접 탭해야 정보가 뜬다
     return tower
@@ -431,8 +438,9 @@ export class GameEngine {
     // 혼종 등 다종족은 각 종족 업그레이드를 모두 합산 적용
     const lv = bp.races.reduce((sum, r) => sum + this.state.upgrades[r], 0)
     const dmgMul = 1 + lv * BALANCE.upgradeBonusPerLevel // 단리
+    const buff = this.state.allyBuffTimer > 0 ? this.state.allyBuffMul : 1 // 말라쉬 창조의 숨결
     return {
-      damage: bp.damage * dmgMul * dmgBonusMul,
+      damage: bp.damage * dmgMul * dmgBonusMul * buff,
       attackSpeed: bp.attackSpeed,
       range: bp.range,
       splashRadius: bp.splashRadius,
@@ -492,6 +500,9 @@ export class GameEngine {
 
     if (s.phase === 'wave') this.spawnTick(dt)
 
+    // 말라쉬 창조의 숨결 — 아군 버프 지속시간 감소
+    if (s.allyBuffTimer > 0) s.allyBuffTimer = Math.max(0, s.allyBuffTimer - dt)
+
     // 미션 몹은 건설 페이즈에도 맵을 걷는다 → 적이 있으면 전투 시뮬레이션 수행
     if (s.phase === 'wave' || s.enemies.length > 0) {
       this.enemyTick(dt)
@@ -520,6 +531,7 @@ export class GameEngine {
       // 디버프 타이머
       if (e.stunTimer > 0) e.stunTimer = Math.max(0, e.stunTimer - dt)
       if (e.slowTimer > 0) e.slowTimer = Math.max(0, e.slowTimer - dt)
+      if (e.ampTimer > 0) e.ampTimer = Math.max(0, e.ampTimer - dt)
       const factor = e.stunTimer > 0 ? 0 : e.slowTimer > 0 ? e.slowFactor : 1
       e.progress += e.speed * factor * dt
       if (e.progress >= PATH_LENGTH) {
@@ -589,9 +601,34 @@ export class GameEngine {
       if (t.blueprint.skill === 'clone' && Math.random() < BALANCE.cloneChance) {
         t.dmgBonusMul = Math.min(t.dmgBonusMul + 1, 1 + BALANCE.cloneMaxStacks)
       }
-      // 충전(모한다르 3단 충전): 연속 공격마다 피해 배율 증가(다음 발사부터 반영)
+      // 충전(모한다르 3단 충전): 대상이 바뀌면 초기화(공허 포격기) → 연속 공격마다 증가
       if (t.blueprint.skill === 'charge') {
+        if (targets[0].uid !== t.lastTargetUid) t.dmgBonusMul = 1
+        t.lastTargetUid = targets[0].uid
         t.dmgBonusMul = Math.min(t.dmgBonusMul + BALANCE.chargeStepMul, BALANCE.chargeMaxMul)
+      }
+      // 스킬 필드(말라쉬는 발사 시 숨결을 동적으로 결정)
+      let projSkill = t.blueprint.skill
+      let projSkillChance = t.blueprint.skillChance
+      let projSlowFac = t.blueprint.slowFac
+      let projAmpFac = t.blueprint.ampFac
+      let projSlowDur = t.blueprint.slowDur
+      if (t.blueprint.skill === 'malash') {
+        projSkill = undefined // 평소엔 광역 평타만
+        if (Math.random() < BALANCE.malashChance) {
+          if (Math.random() < 0.5) {
+            // 창조의 숨결: 아군 공격력 버프
+            this.state.allyBuffTimer = BALANCE.allyBuffDuration
+            this.state.allyBuffMul = BALANCE.allyBuffMul
+          } else {
+            // 파괴의 숨결: 범위 감속 + 약화
+            projSkill = 'slow'
+            projSkillChance = 1
+            projSlowFac = BALANCE.malashSlowFac
+            projAmpFac = BALANCE.malashAmpFac
+            projSlowDur = BALANCE.ampDuration
+          }
+        }
       }
       // 주기당 hits발 발사 — 대상이 부족하면 앞선 적에게 중복 타격
       const melee = t.blueprint.melee
@@ -607,8 +644,13 @@ export class GameEngine {
           splashRadius: stats.splashRadius * splashMul,
           bonusVsBoss: stats.bonusVsBoss,
           color: t.blueprint.color,
-          skill: t.blueprint.skill,
-          skillChance: t.blueprint.skillChance,
+          skill: projSkill,
+          skillChance: projSkillChance,
+          splashChance: t.blueprint.splashChance,
+          slowDur: projSlowDur,
+          slowFac: projSlowFac,
+          ampFac: projAmpFac,
+          multiMul: t.blueprint.multiMul,
           melee,
           rank,
           t: 0,
@@ -771,8 +813,13 @@ export class GameEngine {
     // 피해 대상 집합 결정
     let targets: Enemy[]
     if (p.splashRadius > 0) {
-      // 평타 자체가 광역(splash). 감속/기절은 발동 시 splash 대상 전체에 적용
-      targets = this.state.enemies.filter((e) => Math.hypot(e.pos.x - impact.x, e.pos.y - impact.y) <= p.splashRadius)
+      // 평타 광역. splashChance가 있으면 확률 발동(미발동 시 단일)
+      const doSplash = p.splashChance === undefined || Math.random() < p.splashChance
+      targets = doSplash
+        ? this.state.enemies.filter((e) => Math.hypot(e.pos.x - impact.x, e.pos.y - impact.y) <= p.splashRadius)
+        : primary
+          ? [primary]
+          : []
     } else if (p.skill === 'multi3' && proc) {
       // 확률 다중타격: 주변 진행도 상위 적들 동시 타격
       targets = [...this.state.enemies]
@@ -783,12 +830,23 @@ export class GameEngine {
       targets = primary ? [primary] : []
     }
     for (const e of targets) {
-      e.hp -= e.isBoss ? p.damage * p.bonusVsBoss : p.damage
-      if (proc && p.skill === 'slow') {
-        e.slowTimer = BALANCE.slowDuration
-        e.slowFactor = BALANCE.slowFactor
-      } else if (proc && p.skill === 'stun' && !e.isBoss) {
-        e.stunTimer = BALANCE.stunDuration
+      let dmg = e.isBoss ? p.damage * p.bonusVsBoss : p.damage
+      // 다중타격 2차 대상(쿠쿨자 쿠션 등)은 감쇠
+      if (p.multiMul !== undefined && e.uid !== p.targetUid) dmg *= p.multiMul
+      // 받는 피해 증폭(약화) 적용
+      if (e.ampTimer > 0) dmg *= e.ampFactor
+      e.hp -= dmg
+      if (proc) {
+        if (p.skill === 'slow') {
+          e.slowTimer = p.slowDur ?? BALANCE.slowDuration
+          e.slowFactor = p.slowFac ?? BALANCE.slowFactor
+        } else if (p.skill === 'stun' && !e.isBoss) {
+          e.stunTimer = BALANCE.stunDuration
+        }
+        if (p.ampFac !== undefined) {
+          e.ampTimer = BALANCE.ampDuration
+          e.ampFactor = p.ampFac
+        }
       }
     }
     // 사망 처리

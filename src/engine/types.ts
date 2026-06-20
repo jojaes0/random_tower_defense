@@ -9,7 +9,7 @@ export type Rarity = 'common' | 'rare' | 'hero' | 'legend' | 'god'
 export type Role = 'line' | 'boss' | 'balance'
 
 /** 타워 시그니처 스킬 */
-export type SkillId = 'clone' | 'slow' | 'multi3' | 'stun' | 'charge' | 'summon' | 'bomb' | 'mode'
+export type SkillId = 'clone' | 'slow' | 'multi3' | 'stun' | 'charge' | 'summon' | 'bomb' | 'mode' | 'malash'
 
 /** 듀크 대체모드 종류 */
 export type DukeMode = 'fast' | 'power' | 'aoe' | null
@@ -64,6 +64,16 @@ export interface TowerBlueprint {
   skill?: SkillId
   /** 스킬 발동 확률(0~1). 미지정 시 1(상시 발동) */
   skillChance?: number
+  /** splash가 확률 발동일 때의 확률(미지정 시 상시 광역) */
+  splashChance?: number
+  /** 감속 지속(초) 오버라이드(미지정 시 BALANCE.slowDuration) */
+  slowDur?: number
+  /** 감속 계수 오버라이드(0~1, 미지정 시 BALANCE.slowFactor) */
+  slowFac?: number
+  /** 받는 피해 증폭 계수(예: 1.2 = 20% 더 받음). 설정 시 발동마다 적에게 부여 */
+  ampFac?: number
+  /** 다중타격 2차 대상(주 대상 외) 피해 배율(쿠쿨자 쿠션 1/3 등) */
+  multiMul?: number
   /** 스킬 설명(UI용) */
   skillDesc?: string
   /** 보조 무기(예: 골리앗 미사일) — 본 무기와 별개 쿨다운·사거리·위력으로 동시 운용 */
@@ -93,6 +103,8 @@ export interface Tower {
   modeTimer: number
   /** 듀크 대체모드 종류 */
   modeType: DukeMode
+  /** 충전형(모한다르) 직전 대상 — 대상이 바뀌면 충전 초기화 */
+  lastTargetUid: number
 }
 
 /** 소환 미니언(군단 숙주 식충 등) — 자율 이동하며 적을 공격 */
@@ -140,6 +152,9 @@ export interface Enemy {
   slowFactor: number
   /** 기절 남은 시간(초) */
   stunTimer: number
+  /** 받는 피해 증폭 남은 시간(초)·계수(1=기본) */
+  ampTimer: number
+  ampFactor: number
 }
 
 export interface Projectile {
@@ -153,6 +168,11 @@ export interface Projectile {
   color: string
   skill?: SkillId
   skillChance?: number
+  splashChance?: number
+  slowDur?: number
+  slowFac?: number
+  ampFac?: number
+  multiMul?: number
   /** 근접 공격(슬래시) 여부 */
   melee: boolean
   /** 미사일(보조 무기) 여부 — 렌더 구분 */

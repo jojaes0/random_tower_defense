@@ -55,6 +55,12 @@ interface TowerDef {
   skill?: SkillId
   /** 스킬 발동 확률(0~1). 미지정 시 1 */
   skillChance?: number
+  /** splash가 확률 발동일 때의 확률(미지정 시 상시 광역) */
+  splashChance?: number
+  slowDur?: number
+  slowFac?: number
+  ampFac?: number
+  multiMul?: number
   skillDesc?: string
   /** 보조 무기(예: 골리앗 미사일) — 본 무기와 동시 운용, 독립 스탯 */
   secondary?: { dps: number; interval: number; rangeUnit: number; splash?: number }
@@ -90,7 +96,7 @@ const DEFS: TowerDef[] = [
   // 골리앗: 기관포(본 무기, 보통 사거리·위력·빠른 공속) + 미사일(보조, 강한 위력·긴 사거리·느린 공속) 동시 운용.
   // 총 DPS ≈ 156(기관포 96 + 미사일 60)으로 인게임 표기치 유지.
   { id: 'goliath', name: '골리앗', race: 'terran', rarity: 'hero', role: 'balance', dps: 96, hits: 1, interval: 0.6, rangeUnit: 9, skillDesc: '기관포(연사) + 미사일(강력·장거리·저속) 동시 운용', secondary: { dps: 60, interval: 3, rangeUnit: 12 } },
-  { id: 'thor', name: '토르', race: 'terran', rarity: 'hero', role: 'boss', dps: 137, hits: 2, interval: 1.1, rangeUnit: 7.2, skill: 'slow', skillChance: 0.4, skillDesc: '250mm 타격포 — 단일 대상 50% 감속' },
+  { id: 'thor', name: '토르', race: 'terran', rarity: 'hero', role: 'boss', dps: 137, hits: 2, interval: 1.1, rangeUnit: 7.2, skill: 'slow', skillChance: 0.4, slowFac: 0.5, slowDur: 10, skillDesc: '250mm 타격포 — 단일 대상 50% 감속(10초)' },
   { id: 'ascendant', name: '승천자', race: 'protoss', rarity: 'hero', role: 'boss', dps: 208, hits: 1, interval: 1.6, rangeUnit: 7.2, skillDesc: '정신 폭발 — 강력한 단일 공격' },
   { id: 'executor', name: '젤나가 집행자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 273, hits: 1, interval: 1.45, rangeUnit: 7.2, splash: 38, skill: 'stun', skillChance: 0.25, skillDesc: '확률적 좁은 범위 기절' },
   { id: 'reaver', name: '파괴자', race: 'protoss', rarity: 'hero', role: 'line', dps: 247, hits: 1, interval: 1.8, rangeUnit: 7.2, skill: 'multi3', skillChance: 0.4, skillDesc: '확률적 갑충탄 다중 타격' },
@@ -99,12 +105,12 @@ const DEFS: TowerDef[] = [
   { id: 'primal_igniter', name: '원시 점화자', race: 'zerg', rarity: 'hero', role: 'line', dps: 195, hits: 1, interval: 1, rangeUnit: 6, splash: 58, skillDesc: '화염방사 — 범위 공격' },
 
   // ── 전설(legend) 8 ──────────────────────────────────────────────
-  { id: 'valerius', name: '발리우스', race: 'terran', rarity: 'legend', role: 'line', dps: 527, hits: 1, interval: 1, rangeUnit: 7.2, splash: 48, skillDesc: '일직선 포격 — 범위 피해' },
-  { id: 'warfield', name: '워필드', race: 'terran', rarity: 'legend', role: 'line', dps: 585, hits: 1, interval: 1.04, rangeUnit: 7.2, splash: 42, skillDesc: '십자 모양 좁은 범위 피해' },
+  { id: 'valerius', name: '발리우스', race: 'terran', rarity: 'legend', role: 'line', dps: 527, hits: 1, interval: 1, rangeUnit: 7.2, splash: 48, splashChance: 0.35, skillDesc: '확률적 일직선 포격(범위)' },
+  { id: 'warfield', name: '워필드', race: 'terran', rarity: 'legend', role: 'line', dps: 585, hits: 1, interval: 1.04, rangeUnit: 7.2, splash: 42, splashChance: 0.35, skillDesc: '확률적 십자 범위 피해' },
   { id: 'mojo', name: '모조', race: 'protoss', rarity: 'legend', role: 'boss', dps: 1200, hits: 1, interval: 1.2, rangeUnit: 7.2, skillDesc: '스킬 없음 — 높은 단일 DPS' },
   { id: 'mohandar', name: '모한다르', race: 'protoss', rarity: 'legend', role: 'boss', dps: 128, hits: 1, interval: 1, rangeUnit: 11, skill: 'charge', skillDesc: '3단 충전(공허 포격기) — 연속 공격 시 피해 증가' },
-  { id: 'urun', name: '우룬', race: 'protoss', rarity: 'legend', role: 'line', dps: 273, hits: 2, interval: 0.8, rangeUnit: 7.2, splash: 54, skillDesc: '과부하 — 주변 범위 난사' },
-  { id: 'zagara', name: '자가라', race: 'zerg', rarity: 'legend', role: 'line', dps: 292, hits: 1, interval: 1.35, rangeUnit: 7, splash: 50, skillDesc: '맹독충 투하 — 방사 피해' },
+  { id: 'urun', name: '우룬', race: 'protoss', rarity: 'legend', role: 'line', dps: 273, hits: 2, interval: 0.8, rangeUnit: 7.2, splash: 54, splashChance: 0.25, skillDesc: '과부하 — 주기적 주변 범위 난사' },
+  { id: 'zagara', name: '자가라', race: 'zerg', rarity: 'legend', role: 'line', dps: 292, hits: 1, interval: 1.35, rangeUnit: 6, splash: 50, skillDesc: '맹독충 투하 — 방사 피해(평타 사거리 짧음)' },
   { id: 'torrasque', name: '토라스크', race: 'zerg', rarity: 'legend', role: 'line', dps: 325, hits: 1, interval: 0.5, rangeUnit: 7, splash: 54, skillDesc: '기본 공격이 범위 피해' },
   { id: 'mecha_ravager', name: '메카 궤멸충', race: 'terran', races: ['terran', 'zerg'], rarity: 'legend', role: 'line', dps: 858, hits: 1, interval: 1.3, rangeUnit: 7.2, skill: 'multi3', skillChance: 1, skillDesc: '담즙 난사 — 여러 개체 타격' },
 
@@ -112,15 +118,15 @@ const DEFS: TowerDef[] = [
   { id: 'sam', name: '사기꾼 샘', race: 'terran', rarity: 'god', role: 'line', dps: 1650, hits: 2, interval: 0.88, rangeUnit: 7.2, skill: 'bomb', skillChance: 0.05, skillDesc: '사신 2연사 + 5% 확률 폭탄 6발 난사(광역)', secondary: { dps: 280, interval: 7, rangeUnit: 9, splash: 64 } },
   { id: 'tauren_marine', name: '타우렌 우주 해병', race: 'terran', rarity: 'god', role: 'line', dps: 1900, hits: 1, interval: 0.6, rangeUnit: 7.2, splash: 44, skill: 'slow', skillChance: 0.4, skillDesc: '충격파 — 일직선 감속' },
   { id: 'duke', name: '듀크', race: 'terran', rarity: 'god', role: 'balance', dps: 2300, hits: 1, interval: 1, rangeUnit: 10, splash: 52, skill: 'mode', skillChance: 0.2, skillDesc: '20% 확률 5초 대체모드(빠른공속/범위/강력)' },
-  { id: 'rasagal', name: '라자갈', race: 'protoss', rarity: 'god', role: 'balance', dps: 1250, hits: 1, interval: 0.27, rangeUnit: 7.2, splash: 44, skill: 'slow', skillChance: 0.5, skillDesc: '분열망 — 범위 약화/감속' },
-  { id: 'malash', name: '말라쉬', race: 'protoss', rarity: 'god', role: 'balance', dps: 2400, hits: 1, interval: 0.7, rangeUnit: 7.2, splash: 50, skill: 'slow', skillChance: 0.15, skillDesc: '파괴의 숨결 — 범위 감속' },
+  { id: 'rasagal', name: '라자갈', race: 'protoss', rarity: 'god', role: 'balance', dps: 1250, hits: 1, interval: 0.27, rangeUnit: 7.2, splash: 44, skill: 'slow', skillChance: 0.5, slowFac: 0.85, slowDur: 2.5, ampFac: 1.2, skillDesc: '분열망 — 범위 15% 감속 + 20% 약화(받는 피해↑)' },
+  { id: 'malash', name: '말라쉬', race: 'protoss', rarity: 'god', role: 'balance', dps: 2400, hits: 1, interval: 0.7, rangeUnit: 7.2, splash: 50, skill: 'malash', skillChance: 0.15, skillDesc: '15% 확률 창조의 숨결(아군 공격력↑) 또는 파괴의 숨결(감속+약화)' },
   { id: 'vorazun', name: '보라준', race: 'protoss', rarity: 'god', role: 'line', dps: 1550, hits: 1, interval: 0.95, rangeUnit: 7.2, skill: 'multi3', skillChance: 0.5, skillDesc: '그림자 격노 — 여러 대상 연속 공격' },
   { id: 'impaler', name: '추적 도살자', race: 'zerg', rarity: 'god', role: 'balance', dps: 2700, hits: 1, interval: 0.7, rangeUnit: 7.2, skill: 'multi3', skillChance: 0.33, skillDesc: '33% 확률 주변 3마리 타격' },
-  { id: 'sliven', name: '슬리반', race: 'zerg', rarity: 'god', role: 'line', dps: 1000, hits: 1, interval: 1.35, rangeUnit: 7.2, splash: 62, skillDesc: '산성 포자 — 광역(궤멸충 상위호환)' },
+  { id: 'sliven', name: '슬리반', race: 'zerg', rarity: 'god', role: 'line', dps: 1000, hits: 1, interval: 1.35, rangeUnit: 7.2, splash: 62, splashChance: 0.4, skillDesc: '산성 포자 — 주기적 광역 투하(궤멸충 상위호환)' },
   { id: 'mobius_hybrid', name: '뫼비우스 혼종', race: 'terran', races: ['terran', 'protoss', 'zerg'], rarity: 'god', role: 'balance', dps: 1400, hits: 1, interval: 1.25, rangeUnit: 10, splash: 50, skill: 'slow', skillChance: 1, skillDesc: '십자 폭발 + 이속 감소' },
   { id: 'raynor', name: '레이너', race: 'terran', rarity: 'god', role: 'balance', dps: 3800, hits: 1, interval: 0.6, rangeUnit: 7.2, skillDesc: '스킬 없음 — 순수 깡딜' },
   { id: 'zeratul', name: '제라툴', race: 'protoss', rarity: 'god', role: 'balance', dps: 2650, hits: 1, interval: 0.95, rangeUnit: 7.2, skill: 'multi3', skillChance: 0.25, skillDesc: '가르기 — 25% 확률 반원 광역' },
-  { id: 'kukulza', name: '쿠쿨자', race: 'zerg', rarity: 'god', role: 'line', dps: 3500, hits: 1, interval: 1, rangeUnit: 7.2, skill: 'multi3', skillChance: 1, skillDesc: '쐐기 벌레 — 최대 3마리 튕김' },
+  { id: 'kukulza', name: '쿠쿨자', race: 'zerg', rarity: 'god', role: 'line', dps: 3500, hits: 1, interval: 1, rangeUnit: 7.2, skill: 'multi3', skillChance: 1, multiMul: 0.3333, skillDesc: '쐐기 벌레 — 최대 3마리 튕김(쿠션 1/3 피해)' },
 ]
 
 // 타워별 캐릭터 아이콘 — 무슨 유닛인지 한눈에 구분
@@ -158,6 +164,11 @@ const buildBlueprint = (d: TowerDef): TowerBlueprint => ({
   melee: d.rangeUnit <= 5, // 사거리 작은 유닛 = 근접
   skill: d.skill,
   skillChance: d.skillChance,
+  splashChance: d.splashChance,
+  slowDur: d.slowDur,
+  slowFac: d.slowFac,
+  ampFac: d.ampFac,
+  multiMul: d.multiMul,
   skillDesc: d.skillDesc,
   secondary: d.secondary && {
     damage: Math.round(d.secondary.dps * d.secondary.interval),
