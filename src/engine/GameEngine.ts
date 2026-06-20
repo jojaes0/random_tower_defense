@@ -322,7 +322,7 @@ export class GameEngine {
   private placeTower = (bp: TowerBlueprint, pos: Vec2): Tower => {
     const tower: Tower = { uid: this.nextUid(), blueprint: bp, pos, cooldown: 0, dmgBonusMul: 1 }
     this.state.towers.push(tower)
-    this.state.selectedTowerUid = tower.uid
+    // 설치·합성 시 자동 선택(정보 표시)하지 않음 — 사용자가 직접 탭해야 정보가 뜬다
     return tower
   }
 

@@ -144,14 +144,19 @@ const onWheel = (e: WheelEvent) => {
 
 const handleTap = (clientX: number, clientY: number) => {
   const pos = worldFromClient(clientX, clientY)
-  if (props.buildMode === 'common') return void props.engine.buildCommonTower(pos)
-  if (props.buildMode === 'hero' && props.heroId) return void props.engine.buildHeroTower(props.heroId, pos)
   const hit = props.engine.state.towers.find((t) => Math.hypot(t.pos.x - pos.x, t.pos.y - pos.y) <= GRID.size / 2)
+  if (props.buildMode === 'common') {
+    if (hit) return void props.engine.selectTower(hit.uid) // 설치 모드에서 이미 설치된 칸 → 정보
+    return void props.engine.buildCommonTower(pos)
+  }
+  if (props.buildMode === 'hero' && props.heroId) {
+    if (hit) return void props.engine.selectTower(hit.uid)
+    return void props.engine.buildHeroTower(props.heroId, pos)
+  }
   if (props.buildMode === 'merge') {
     if (!hit) return void props.engine.selectTower(null)
-    props.engine.selectTower(hit.uid)
-    props.engine.mergeTower(hit.uid) // 성공/실패 이펙트는 엔진이 발생
-    return
+    if (props.engine.mergePartner(hit.uid)) return void props.engine.mergeTower(hit.uid) // 합성(정보 안 띄움)
+    return void props.engine.selectTower(hit.uid) // 짝 없으면 정보 표시
   }
   props.engine.selectTower(hit ? hit.uid : null)
 }
