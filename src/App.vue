@@ -135,7 +135,7 @@ const toggleMenu = () => {
     <!-- 보상/달성 토스트 -->
     <TransitionGroup name="toast" tag="div" class="toasts">
       <div v-for="n in state.notifications" :key="n.id" class="toast" :class="n.kind">
-        <div class="toast-title">{{ n.kind === 'quest' ? '🏆' : n.kind === 'boss' ? '☠️' : '🎯' }} {{ n.title }}</div>
+        <div class="toast-title">{{ n.kind === 'quest' ? '🏆' : n.kind === 'boss' ? '☠️' : n.kind === 'round' ? '⚔️' : '🎯' }} {{ n.title }}</div>
         <div class="toast-detail">{{ n.detail }}</div>
       </div>
     </TransitionGroup>
@@ -146,13 +146,16 @@ const toggleMenu = () => {
         <div class="chip"><span>R</span><b>{{ roundLabel }}</b></div>
         <div class="chip"><span>⏱</span><b class="time">{{ mmss(state.elapsed) }}</b></div>
         <div class="speed">
-          <button :class="{ on: speed === 0 }" @click="togglePause">⏸</button>
+          <button :class="{ on: speed === 0 }" aria-label="일시정지" @click="togglePause"><span class="pause-ico"></span></button>
           <button :class="{ on: speed === 1 }" @click="setSpeed(1)">1</button>
           <button :class="{ on: speed === 2 }" @click="setSpeed(2)">2</button>
           <button :class="{ on: speed === 3 }" @click="setSpeed(3)">3</button>
         </div>
       </div>
-      <button class="start" :disabled="!canStart" @click="start">{{ state.phase === 'wave' ? '진행중' : nextRoundLabel }}</button>
+      <div class="start-wrap">
+        <button class="start" :disabled="!canStart" @click="start">{{ state.phase === 'wave' ? '진행중' : nextRoundLabel }}</button>
+        <span v-if="state.autoStarted && state.phase === 'building' && state.nextRoundCountdown > 0" class="start-cd">{{ Math.ceil(state.nextRoundCountdown) }}s 후 자동</span>
+      </div>
     </header>
 
     <!-- 자원 스탯 (별도 줄, 순서: 미네랄·가스·체력) -->
@@ -169,7 +172,6 @@ const toggleMenu = () => {
       <span class="message">{{ state.message }}</span>
       <span v-if="preview && state.phase === 'building'" class="preview" :class="{ boss: preview.type === 'boss' }">
         다음 R{{ preview.round }}: <template v-if="preview.type === 'boss'">☠️</template><template v-else>잡몹×{{ preview.count }}</template> HP<b>{{ fmt(preview.hp) }}</b>
-        <span v-if="state.autoStarted && state.nextRoundCountdown > 0" class="cd">⏱{{ Math.ceil(state.nextRoundCountdown) }}s</span>
         <span v-if="preview.round === BALANCE.totalRounds && !state.endless" class="final-warn">⚠️막으면 패배</span>
       </span>
     </div>
@@ -245,7 +247,7 @@ const toggleMenu = () => {
             <button class="mini wide" :disabled="state.terrazine < 1" @click="engine.terrazineToGas()">→ 가스 +{{ BALANCE.terrazineToGas }} (◆1)</button>
             <p class="d-help" style="margin-top: 12px">영웅 선택권 — ◆1 + {{ BALANCE.heroPickMineralCost }}원 (선택 후 맵 탭)</p>
             <div class="hero-grid">
-              <button v-for="h in HERO_TOWERS" :key="h.id" class="hero-btn" :class="{ active: heroId === h.id }" :disabled="state.terrazine < 1 || state.minerals < BALANCE.heroPickMineralCost" @click="selectHero(h.id)">{{ h.icon }} {{ h.name }}</button>
+              <button v-for="h in HERO_TOWERS" :key="h.id" class="hero-btn" :class="{ active: heroId === h.id }" :disabled="state.terrazine < 1 || state.minerals < BALANCE.heroPickMineralCost" @click="selectHero(h.id)"><TowerIcon :bp="h" :size="20" /><span>{{ h.name }}</span></button>
             </div>
           </div>
           <div v-if="tab === 'quest'">
@@ -304,10 +306,12 @@ const toggleMenu = () => {
 .toast.quest { border-color: #fbbf24; }
 .toast.boss { border-color: #ef4444; }
 .toast.mission { border-color: #f97316; }
+.toast.round { border-color: #38bdf8; }
 .toast-title { font-weight: 800; font-size: 14px; }
 .toast.quest .toast-title { color: #fcd34d; }
 .toast.boss .toast-title { color: #fca5a5; }
 .toast.mission .toast-title { color: #fdba74; }
+.toast.round .toast-title { color: #7dd3fc; }
 .toast-detail { font-size: 12px; color: #cbd5e1; margin-top: 3px; }
 .toast-enter-active { transition: all 0.35s cubic-bezier(0.2, 1.4, 0.4, 1); }
 .toast-leave-active { transition: all 0.4s ease; position: absolute; }
@@ -333,10 +337,17 @@ const toggleMenu = () => {
 .chip.gas b { color: #86efac; }
 .chip.terra b { color: #fbbf24; }
 .speed { display: flex; gap: 3px; }
-.speed button { width: 28px; height: 30px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 6px; color: #cbd5e1; cursor: pointer; font-size: 12px; }
+.speed button { display: flex; align-items: center; justify-content: center; width: 28px; height: 30px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 6px; color: #cbd5e1; cursor: pointer; font-size: 12px; padding: 0; }
 .speed button.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+/* 일시정지 아이콘 — 두 막대로 그려 박스 정중앙에 배치 */
+.pause-ico { position: relative; display: inline-block; width: 9px; height: 11px; }
+.pause-ico::before, .pause-ico::after { content: ''; position: absolute; top: 0; width: 3px; height: 11px; background: currentColor; border-radius: 1px; }
+.pause-ico::before { left: 0; }
+.pause-ico::after { right: 0; }
+.start-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .start { padding: 8px 12px; font-weight: 700; font-size: 13px; background: #2563eb; border: none; border-radius: 7px; color: #fff; cursor: pointer; white-space: nowrap; }
 .start:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
+.start-cd { font-size: 10px; color: #93c5fd; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* 메시지/미리보기 오버레이 */
 .msgbar { position: absolute; top: 74px; left: 8px; right: 8px; z-index: 8; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; pointer-events: none; }
@@ -396,7 +407,8 @@ const toggleMenu = () => {
 .mission-btn small { display: block; color: #fb923c; font-size: 11px; margin-top: 2px; }
 .mission-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.hero-btn { padding: 9px 6px; background: #0b1220; border: 1px solid #5b21b6; border-radius: 7px; color: #e2e8f0; cursor: pointer; font-size: 12px; text-align: left; }
+.hero-btn { display: flex; align-items: center; gap: 6px; padding: 7px 6px; background: #0b1220; border: 1px solid #5b21b6; border-radius: 7px; color: #e2e8f0; cursor: pointer; font-size: 12px; text-align: left; }
+.hero-btn canvas { flex-shrink: 0; }
 .hero-btn.active { background: #4c1d95; border-color: #a855f7; }
 .hero-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .quest-list { list-style: none; padding: 0; margin: 0; }

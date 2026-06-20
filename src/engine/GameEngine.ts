@@ -87,7 +87,7 @@ export interface GameEffect {
 /** 보상/달성 토스트 */
 export interface GameNotification {
   id: number
-  kind: 'quest' | 'boss' | 'mission'
+  kind: 'quest' | 'boss' | 'mission' | 'round'
   title: string
   detail: string
 }
@@ -208,6 +208,8 @@ export class GameEngine {
     this.buildSpawnQueue(this.state.round)
     this.spawnTimer = 0
     this.state.message = `라운드 ${this.state.round} 시작!`
+    const boss = this.isBossRound(this.state.round)
+    this.notify('round', `라운드 ${this.state.round} 시작`, boss ? '⚠️ 보스 등장!' : `잡몹 ${BALANCE.mobsPerRound}마리`)
     this.onChange()
   }
 
