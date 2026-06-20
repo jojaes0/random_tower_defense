@@ -101,7 +101,7 @@ const doSell = () => {
 
 const upgPct = (race: RaceId) => +(state.upgrades[race] * BALANCE.upgradeBonusPerLevel * 100).toFixed(1)
 const raceNames = (races: RaceId[]) => races.map((r) => RACES.find((x) => x.id === r)?.name).join('·')
-const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
+const mmss = (sec: number) => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
 const roundLabel = computed(() => (state.endless ? `${state.round} ∞` : `${state.round}/${BALANCE.totalRounds}`))
 const fmt = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : `${Math.round(n)}`)
 const preview = computed(() => engine.nextRoundPreview())
@@ -144,7 +144,7 @@ const toggleMenu = () => {
     <header class="topbar">
       <div class="tl">
         <div class="chip"><span>R</span><b>{{ roundLabel }}</b></div>
-        <div class="chip"><span>⏱</span><b>{{ mmss(state.elapsed) }}</b></div>
+        <div class="chip"><span>⏱</span><b class="time">{{ mmss(state.elapsed) }}</b></div>
         <div class="speed">
           <button :class="{ on: speed === 0 }" @click="togglePause">⏸</button>
           <button :class="{ on: speed === 1 }" @click="setSpeed(1)">1</button>
@@ -326,6 +326,8 @@ const toggleMenu = () => {
 .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: rgba(11, 18, 32, 0.92); border-radius: 7px; border: 1px solid #1f2d45; white-space: nowrap; flex-shrink: 0; }
 .chip span { font-size: 10px; color: #8aa0c0; }
 .chip b { font-size: 13px; }
+/* 시간: 자릿수가 바뀌어도 너비 고정(00:00 기준, 등폭 숫자) */
+.chip b.time { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; display: inline-block; min-width: 5ch; text-align: center; }
 .chip.life b { color: #ef4444; }
 .chip.mineral b { color: #67e8f9; }
 .chip.gas b { color: #86efac; }
