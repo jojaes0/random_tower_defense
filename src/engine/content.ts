@@ -94,7 +94,7 @@ const DEFS: TowerDef[] = [
   { id: 'ascendant', name: '승천자', race: 'protoss', rarity: 'hero', role: 'boss', dps: 208, hits: 1, interval: 1.6, rangeUnit: 7.2, skillDesc: '정신 폭발 — 강력한 단일 공격' },
   { id: 'executor', name: '젤나가 집행자', race: 'protoss', rarity: 'hero', role: 'balance', dps: 273, hits: 1, interval: 1.45, rangeUnit: 7.2, splash: 38, skill: 'stun', skillChance: 0.25, skillDesc: '확률적 좁은 범위 기절' },
   { id: 'reaver', name: '파괴자', race: 'protoss', rarity: 'hero', role: 'line', dps: 247, hits: 1, interval: 1.8, rangeUnit: 7.2, skill: 'multi3', skillChance: 0.4, skillDesc: '확률적 갑충탄 다중 타격' },
-  { id: 'swarm_host', name: '군단 숙주', race: 'zerg', rarity: 'hero', role: 'line', dps: 52, hits: 1, interval: 2.5, rangeUnit: 7.2, skill: 'multi3', skillChance: 0.6, skillDesc: '식충 — 여러 적 동시 공격' },
+  { id: 'swarm_host', name: '군단 숙주', race: 'zerg', rarity: 'hero', role: 'line', dps: 52, hits: 1, interval: 2.5, rangeUnit: 7.2, skill: 'summon', skillDesc: '식충 4마리 소환 — 맵을 돌며 적 공격(본체는 약함)' },
   { id: 'queen', name: '여왕', race: 'zerg', rarity: 'hero', role: 'balance', dps: 364, hits: 1, interval: 1.5, rangeUnit: 9, splash: 50, skill: 'slow', skillChance: 0.3, skillDesc: '인스네어 — 범위 확률 감속' },
   { id: 'primal_igniter', name: '원시 점화자', race: 'zerg', rarity: 'hero', role: 'line', dps: 195, hits: 1, interval: 1, rangeUnit: 6, splash: 58, skillDesc: '화염방사 — 범위 공격' },
 
@@ -109,9 +109,9 @@ const DEFS: TowerDef[] = [
   { id: 'mecha_ravager', name: '메카 궤멸충', race: 'terran', races: ['terran', 'zerg'], rarity: 'legend', role: 'line', dps: 858, hits: 1, interval: 1.3, rangeUnit: 7.2, skill: 'multi3', skillChance: 1, skillDesc: '담즙 난사 — 여러 개체 타격' },
 
   // ── 신(god) 12 ── (뉴 랜타디 23 기준 고유 스킬)
-  { id: 'sam', name: '사기꾼 샘', race: 'terran', rarity: 'god', role: 'line', dps: 1650, hits: 2, interval: 0.88, rangeUnit: 7.2, splash: 56, skillDesc: '원격 폭탄 — 광역 난사(2연사)' },
+  { id: 'sam', name: '사기꾼 샘', race: 'terran', rarity: 'god', role: 'line', dps: 1650, hits: 2, interval: 0.88, rangeUnit: 7.2, skill: 'bomb', skillChance: 0.05, skillDesc: '사신 2연사 + 5% 확률 폭탄 6발 난사(광역)', secondary: { dps: 280, interval: 7, rangeUnit: 9, splash: 64 } },
   { id: 'tauren_marine', name: '타우렌 우주 해병', race: 'terran', rarity: 'god', role: 'line', dps: 1900, hits: 1, interval: 0.6, rangeUnit: 7.2, splash: 44, skill: 'slow', skillChance: 0.4, skillDesc: '충격파 — 일직선 감속' },
-  { id: 'duke', name: '듀크', race: 'terran', rarity: 'god', role: 'balance', dps: 2300, hits: 1, interval: 1, rangeUnit: 10, splash: 52, skillDesc: '공성 — 광역 + 최상위 사거리' },
+  { id: 'duke', name: '듀크', race: 'terran', rarity: 'god', role: 'balance', dps: 2300, hits: 1, interval: 1, rangeUnit: 10, splash: 52, skill: 'mode', skillChance: 0.2, skillDesc: '20% 확률 5초 대체모드(빠른공속/범위/강력)' },
   { id: 'rasagal', name: '라자갈', race: 'protoss', rarity: 'god', role: 'balance', dps: 1250, hits: 1, interval: 0.27, rangeUnit: 7.2, splash: 44, skill: 'slow', skillChance: 0.5, skillDesc: '분열망 — 범위 약화/감속' },
   { id: 'malash', name: '말라쉬', race: 'protoss', rarity: 'god', role: 'balance', dps: 2400, hits: 1, interval: 0.7, rangeUnit: 7.2, splash: 50, skill: 'slow', skillChance: 0.15, skillDesc: '파괴의 숨결 — 범위 감속' },
   { id: 'vorazun', name: '보라준', race: 'protoss', rarity: 'god', role: 'line', dps: 1550, hits: 1, interval: 0.95, rangeUnit: 7.2, skill: 'multi3', skillChance: 0.5, skillDesc: '그림자 격노 — 여러 대상 연속 공격' },

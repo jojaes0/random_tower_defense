@@ -61,6 +61,29 @@ export const BALANCE = {
   chargeMaxMul: 3, // 충전(모한다르 3단 충전) 최대 피해 배율
   chargeStepMul: 1, // 연속 공격 시 배율 증가량(1→2→3)
 
+  // 군단 숙주 식충 소환(🟡 수치 임의)
+  locustCount: 4, // 유지 마릿수
+  locustInterval: 5, // 보충 주기(초)
+  locustLife: 8, // 식충 수명(초)
+  locustRange: 120, // 식충 공격 사거리(px)
+  locustAttackSpeed: 1, // 식충 초당 공격
+  locustSpeed: 90, // 식충 이동 속도(px/s)
+  locustDamageMul: 1, // 본체 발당 피해 대비 식충 피해 배율
+
+  // 사기꾼 샘 폭탄 난사(🟡 수치 임의)
+  bombChance: 0.05, // 평타당 폭탄 난사 발동 확률
+  bombCount: 6, // 난사 폭탄 수
+  bombSplash: 64, // 폭탄 범위(px)
+  bombDamageMul: 1, // 평타 발당 피해 대비 폭탄 피해 배율
+
+  // 듀크 대체모드(🟡 수치 임의)
+  dukeModeChance: 0.2, // 평타당 모드 발동 확률
+  dukeModeDuration: 5, // 모드 지속(초)
+  dukeBaseMul: 1.5, // 모드 발동 시 기본 피해 증가
+  dukePowerMul: 2.5, // 강력 모드 피해 배율
+  dukeFastCdMul: 0.5, // 빠른 모드 쿨다운 배율
+  dukeAoeSplashMul: 1.6, // 범위 모드 splash 배율
+
   // 시간 경과 퀘스트(초)
   timeQuest7: 7 * 60,
   timeQuest12: 12 * 60,

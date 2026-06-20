@@ -16,9 +16,11 @@ import { PATH_LENGTH, isBuildableCell, pointAtDistance, snapToGrid } from './pat
 import { ROUND_HP_HELL, endlessHellHp } from './roundHp'
 import type {
   Difficulty,
+  DukeMode,
   Enemy,
   EnemyBlueprint,
   GamePhase,
+  Minion,
   PersonalMission,
   Projectile,
   RaceId,
@@ -46,6 +48,7 @@ export interface GameState {
   towers: Tower[]
   enemies: Enemy[]
   projectiles: Projectile[]
+  minions: Minion[]
   missions: PersonalMission[]
   selectedTowerUid: number | null
   killCount: number
@@ -116,6 +119,7 @@ export class GameEngine {
     towers: [],
     enemies: [],
     projectiles: [],
+    minions: [],
     missions: PERSONAL_MISSIONS.map((m) => ({ ...m, cooldownRemaining: 0, active: false, clears: 0 })),
     selectedTowerUid: null,
     killCount: 0,
@@ -320,7 +324,7 @@ export class GameEngine {
   }
 
   private placeTower = (bp: TowerBlueprint, pos: Vec2): Tower => {
-    const tower: Tower = { uid: this.nextUid(), blueprint: bp, pos, cooldown: 0, cooldown2: 0, dmgBonusMul: 1 }
+    const tower: Tower = { uid: this.nextUid(), blueprint: bp, pos, cooldown: 0, cooldown2: 0, dmgBonusMul: 1, modeTimer: 0, modeType: null }
     this.state.towers.push(tower)
     // 설치·합성 시 자동 선택(정보 표시)하지 않음 — 사용자가 직접 탭해야 정보가 뜬다
     return tower
@@ -492,6 +496,7 @@ export class GameEngine {
     if (s.phase === 'wave' || s.enemies.length > 0) {
       this.enemyTick(dt)
       this.towerTick(dt)
+      this.minionTick(dt)
       this.projectileTick(dt)
     }
     if (s.phase === 'wave') this.checkRoundEnd()
@@ -547,6 +552,13 @@ export class GameEngine {
     for (const t of this.state.towers) {
       // 보조 무기(골리앗 미사일 등): 본 무기와 독립적으로 발사
       if (t.blueprint.secondary) this.fireSecondary(t, dt)
+      // 군단 숙주: 식충 소환(본 무기와 독립 타이머 cooldown2)
+      if (t.blueprint.skill === 'summon') this.summonTick(t, dt)
+      // 듀크 대체모드 타이머 감소
+      if (t.modeTimer > 0) {
+        t.modeTimer = Math.max(0, t.modeTimer - dt)
+        if (t.modeTimer === 0) t.modeType = null
+      }
       t.cooldown -= dt
       if (t.cooldown > 0) continue
       const stats = this.effectiveStats(t.blueprint, t.dmgBonusMul)
@@ -557,7 +569,22 @@ export class GameEngine {
         if (t.blueprint.skill === 'charge') t.dmgBonusMul = 1
         continue
       }
-      t.cooldown = 1 / stats.attackSpeed
+      // 듀크 대체모드: 발동 시 화력/공속/범위 변화
+      let dmgMul = 1
+      let splashMul = 1
+      let cdMul = 1
+      if (t.blueprint.skill === 'mode') {
+        if (Math.random() < BALANCE.dukeModeChance) {
+          t.modeTimer = BALANCE.dukeModeDuration
+          t.modeType = randItem<DukeMode>(['fast', 'power', 'aoe'])
+        }
+        if (t.modeTimer > 0) {
+          dmgMul = t.modeType === 'power' ? BALANCE.dukePowerMul : BALANCE.dukeBaseMul
+          if (t.modeType === 'fast') cdMul = BALANCE.dukeFastCdMul
+          if (t.modeType === 'aoe') splashMul = BALANCE.dukeAoeSplashMul
+        }
+      }
+      t.cooldown = (1 / stats.attackSpeed) * cdMul
       // 사도 분신: 발사 시 확률적으로 공격력 누적 증가
       if (t.blueprint.skill === 'clone' && Math.random() < BALANCE.cloneChance) {
         t.dmgBonusMul = Math.min(t.dmgBonusMul + 1, 1 + BALANCE.cloneMaxStacks)
@@ -576,8 +603,8 @@ export class GameEngine {
           from: { ...t.pos },
           to: { ...target.pos },
           targetUid: target.uid,
-          damage: stats.damage,
-          splashRadius: stats.splashRadius,
+          damage: stats.damage * dmgMul,
+          splashRadius: stats.splashRadius * splashMul,
           bonusVsBoss: stats.bonusVsBoss,
           color: t.blueprint.color,
           skill: t.blueprint.skill,
@@ -588,7 +615,101 @@ export class GameEngine {
           speed: melee ? 22 : 6, // 근접은 즉시 명중
         })
       }
+      // 사기꾼 샘: 평타당 확률로 폭탄 6발 난사(진행도 상위 적들에게 분산, 단일이면 집중)
+      if (t.blueprint.skill === 'bomb' && Math.random() < (t.blueprint.skillChance ?? BALANCE.bombChance)) {
+        const bombTargets = this.acquireTargets(t.pos, stats.range, BALANCE.bombCount)
+        for (let i = 0; i < BALANCE.bombCount; i++) {
+          const target = bombTargets[i % bombTargets.length]
+          this.state.projectiles.push({
+            uid: this.nextUid(),
+            from: { ...t.pos },
+            to: { ...target.pos },
+            targetUid: target.uid,
+            damage: stats.damage * BALANCE.bombDamageMul,
+            splashRadius: BALANCE.bombSplash,
+            bonusVsBoss: stats.bonusVsBoss,
+            color: t.blueprint.color,
+            melee: false,
+            bomb: true,
+            rank,
+            t: 0,
+            speed: 5,
+          })
+        }
+      }
     }
+  }
+
+  /** 군단 숙주 식충 보충(주기마다 부족분 소환) */
+  private summonTick = (t: Tower, dt: number): void => {
+    t.cooldown2 -= dt
+    if (t.cooldown2 > 0) return
+    t.cooldown2 = BALANCE.locustInterval
+    const alive = this.state.minions.filter((m) => m.ownerUid === t.uid).length
+    const stats = this.effectiveStats(t.blueprint, t.dmgBonusMul)
+    for (let i = alive; i < BALANCE.locustCount; i++) {
+      this.state.minions.push({
+        uid: this.nextUid(),
+        ownerUid: t.uid,
+        pos: { x: t.pos.x + (i - 1.5) * 8, y: t.pos.y },
+        damage: stats.damage * BALANCE.locustDamageMul,
+        range: BALANCE.locustRange,
+        attackSpeed: BALANCE.locustAttackSpeed,
+        cooldown: 0,
+        speed: BALANCE.locustSpeed,
+        life: BALANCE.locustLife,
+        color: t.blueprint.color,
+        bonusVsBoss: stats.bonusVsBoss,
+      })
+    }
+  }
+
+  /** 식충 등 미니언: 가장 가까운 적으로 이동하며 사거리 내에서 발사체 공격 */
+  private minionTick = (dt: number): void => {
+    const survivors: Minion[] = []
+    for (const m of this.state.minions) {
+      m.life -= dt
+      // 소환주가 사라졌거나 수명이 끝나면 제거
+      if (m.life <= 0 || !this.state.towers.some((t) => t.uid === m.ownerUid)) continue
+      // 가장 가까운 적 탐색
+      let target: Enemy | null = null
+      let best = Infinity
+      for (const e of this.state.enemies) {
+        const d = Math.hypot(e.pos.x - m.pos.x, e.pos.y - m.pos.y)
+        if (d < best) {
+          best = d
+          target = e
+        }
+      }
+      if (target) {
+        if (best > m.range) {
+          const dx = target.pos.x - m.pos.x
+          const dy = target.pos.y - m.pos.y
+          const len = Math.hypot(dx, dy) || 1
+          m.pos = { x: m.pos.x + (dx / len) * m.speed * dt, y: m.pos.y + (dy / len) * m.speed * dt }
+        }
+        m.cooldown -= dt
+        if (best <= m.range && m.cooldown <= 0) {
+          m.cooldown = 1 / m.attackSpeed
+          this.state.projectiles.push({
+            uid: this.nextUid(),
+            from: { ...m.pos },
+            to: { ...target.pos },
+            targetUid: target.uid,
+            damage: m.damage,
+            splashRadius: 0,
+            bonusVsBoss: m.bonusVsBoss,
+            color: m.color,
+            melee: false,
+            rank: 1,
+            t: 0,
+            speed: 10,
+          })
+        }
+      }
+      survivors.push(m)
+    }
+    this.state.minions = survivors
   }
 
   /** 보조 무기 발사(본 무기와 독립 쿨다운). 골리앗 미사일: 강력·장거리·저속. */

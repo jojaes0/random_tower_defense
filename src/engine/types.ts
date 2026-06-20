@@ -9,7 +9,10 @@ export type Rarity = 'common' | 'rare' | 'hero' | 'legend' | 'god'
 export type Role = 'line' | 'boss' | 'balance'
 
 /** 타워 시그니처 스킬 */
-export type SkillId = 'clone' | 'slow' | 'multi3' | 'stun' | 'charge'
+export type SkillId = 'clone' | 'slow' | 'multi3' | 'stun' | 'charge' | 'summon' | 'bomb' | 'mode'
+
+/** 듀크 대체모드 종류 */
+export type DukeMode = 'fast' | 'power' | 'aoe' | null
 
 export type GamePhase = 'select-difficulty' | 'building' | 'wave' | 'won' | 'lost'
 
@@ -82,10 +85,29 @@ export interface Tower {
   blueprint: TowerBlueprint
   pos: Vec2
   cooldown: number
-  /** 보조 무기(secondary) 독립 쿨다운 */
+  /** 보조 무기(secondary)·소환(summon) 독립 쿨다운 */
   cooldown2: number
   /** 사도 분신 등으로 누적되는 추가 피해 배율(1=기본) */
   dmgBonusMul: number
+  /** 듀크 대체모드 남은 시간(초) */
+  modeTimer: number
+  /** 듀크 대체모드 종류 */
+  modeType: DukeMode
+}
+
+/** 소환 미니언(군단 숙주 식충 등) — 자율 이동하며 적을 공격 */
+export interface Minion {
+  uid: number
+  ownerUid: number
+  pos: Vec2
+  damage: number
+  range: number
+  attackSpeed: number
+  cooldown: number
+  speed: number
+  life: number
+  color: string
+  bonusVsBoss: number
 }
 
 export interface EnemyBlueprint {
@@ -135,6 +157,8 @@ export interface Projectile {
   melee: boolean
   /** 미사일(보조 무기) 여부 — 렌더 구분 */
   missile?: boolean
+  /** 폭탄(샘 등) 여부 — 렌더 구분 */
+  bomb?: boolean
   /** 등급 랭크(0=일반 … 4=신) — 화려함 스케일 */
   rank: number
   t: number

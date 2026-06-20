@@ -338,6 +338,28 @@ const draw = () => {
     }
   }
 
+  // 소환 미니언(식충): 작은 저그 생물체
+  for (const m of s.minions) {
+    const a = Math.min(1, m.life / 1.2) // 소멸 직전 페이드아웃
+    ctx.save()
+    ctx.globalAlpha = a
+    ctx.fillStyle = '#ec4899'
+    ctx.strokeStyle = '#9d174d'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.ellipse(m.pos.x, m.pos.y, 4, 3, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+    // 다리/가시
+    ctx.beginPath()
+    ctx.moveTo(m.pos.x - 4, m.pos.y)
+    ctx.lineTo(m.pos.x - 6, m.pos.y - 3)
+    ctx.moveTo(m.pos.x + 4, m.pos.y)
+    ctx.lineTo(m.pos.x + 6, m.pos.y - 3)
+    ctx.stroke()
+    ctx.restore()
+  }
+
   // 발사체 — 근접은 생략(즉시 슬래시), 원거리는 등급별 글로우 오브, 미사일은 꼬리+큰 탄두
   for (const p of s.projectiles) {
     if (p.melee) continue
@@ -364,6 +386,21 @@ const draw = () => {
       ctx.fillStyle = '#fbbf24'
       ctx.beginPath()
       ctx.arc(x, y, 4.5, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+      continue
+    }
+    if (p.bomb) {
+      // 폭탄(샘): 어두운 구체 + 붉은 불씨
+      ctx.shadowColor = '#f87171'
+      ctx.shadowBlur = 6
+      ctx.fillStyle = '#1f2937'
+      ctx.beginPath()
+      ctx.arc(x, y, 4, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#f87171'
+      ctx.beginPath()
+      ctx.arc(x, y - 4, 1.4, 0, Math.PI * 2)
       ctx.fill()
       ctx.restore()
       continue
