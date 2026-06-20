@@ -184,7 +184,7 @@ export class GameEngine {
     if (!this.state.endless && round > BALANCE.totalRounds) return null
     const hp = Math.round(this.roundMobHp(round)) // 테이블 값(보스 라운드면 보스 체력)
     if (this.isBossRound(round)) return { round, type: 'boss', count: 1, hp }
-    return { round, type: 'mob', count: Math.floor(BALANCE.mobBase + round * BALANCE.mobPerRound), hp }
+    return { round, type: 'mob', count: BALANCE.mobsPerRound, hp }
   }
 
   startNextRound = (): void => {
@@ -214,8 +214,7 @@ export class GameEngine {
       // 테이블 값이 곧 보스 체력 (이동속도도 동일 4.5)
       queue.push(this.makeEnemy(BOSS_BLUEPRINT, hp, speed, BALANCE.bossBounty, { isBoss: true }))
     } else {
-      const count = Math.floor(BALANCE.mobBase + round * BALANCE.mobPerRound)
-      for (let i = 0; i < count; i++) queue.push(this.makeEnemy(MOB_BLUEPRINT, hp, speed, BALANCE.mobBounty, {}))
+      for (let i = 0; i < BALANCE.mobsPerRound; i++) queue.push(this.makeEnemy(MOB_BLUEPRINT, hp, speed, BALANCE.mobBounty, {}))
     }
     this.spawnQueue = queue
   }

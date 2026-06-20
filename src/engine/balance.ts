@@ -43,8 +43,7 @@ export const BALANCE = {
 
   // 적 — 체력은 roundHp.ts 실측 테이블 사용. 이동속도는 전 몹 공통.
   enemySpeedUnit: 4.5, // 모든 몹 이동속도 4.5(게임유닛) → px = 4.5 × RANGE_SCALE
-  mobBase: 8, // 라운드당 잡몹 수 = floor(mobBase + round×mobPerRound) (임의)
-  mobPerRound: 0.4,
+  mobsPerRound: 20, // 라운드당 잡몹 20마리(보스 라운드는 보스 1마리)
   mobBounty: 0, // 처치당 미네랄 없음(라운드 클리어 300만)
   bossBounty: 0,
 
