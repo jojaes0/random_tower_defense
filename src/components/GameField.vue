@@ -158,6 +158,93 @@ const handleTap = (clientX: number, clientY: number) => {
 // ---- 효과 타이밍(시간 기반) ----
 const effectStart = new Map<number, number>()
 const EFFECT_MS = 650
+const impactStart = new Map<number, number>()
+
+// 캐릭터 아키타입(절차적 글리프) — 이모지 대신 캔버스로 그려 iOS 오버플로 방지 + 특징 표현
+const ARCHETYPE: Record<string, string> = {
+  scv: 'mech', trooper: 'soldier', reaper: 'soldier', fanatic: 'warrior', stalker: 'strider', gargoyle: 'flyer', overlord: 'flyer', zergling: 'bug',
+  marauder_corps: 'soldier', cyclone: 'mech', ghost: 'sniper', zealot: 'warrior', dragoon: 'strider', warp_prism: 'ship', roach: 'bug', hydralisk: 'serpent',
+  goliath: 'mech', thor: 'mech', ascendant: 'caster', executor: 'caster', reaver: 'mech', swarm_host: 'bug', queen: 'serpent', primal_igniter: 'beast',
+  valerius: 'soldier', warfield: 'soldier', mojo: 'ship', mohandar: 'caster', urun: 'caster', zagara: 'serpent', torrasque: 'beast', mecha_ravager: 'bug',
+  sam: 'soldier', tauren_marine: 'soldier', duke: 'tank', rasagal: 'ship', malash: 'caster', vorazun: 'warrior', impaler: 'serpent', sliven: 'beast',
+  mobius_hybrid: 'hybrid', raynor: 'soldier', zeratul: 'warrior', kukulza: 'flyer',
+}
+
+const drawGlyph = (ctx: CanvasRenderingContext2D, art: string, cx: number, cy: number) => {
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.lineJoin = ctx.lineCap = 'round'
+  ctx.strokeStyle = '#f1f5f9'
+  ctx.fillStyle = '#e2e8f0'
+  ctx.lineWidth = 1.6
+  const P = (fn: () => void) => {
+    ctx.beginPath()
+    fn()
+  }
+  switch (art) {
+    case 'soldier':
+      P(() => ctx.arc(0, -6, 2.6, 0, Math.PI * 2)); ctx.fill()
+      P(() => { ctx.moveTo(0, -3); ctx.lineTo(0, 5) }); ctx.stroke()
+      P(() => { ctx.moveTo(-4, 7); ctx.lineTo(0, 5); ctx.lineTo(4, 7) }); ctx.stroke()
+      P(() => { ctx.moveTo(-1, 0); ctx.lineTo(7, -2) }); ctx.stroke()
+      break
+    case 'sniper':
+      P(() => ctx.arc(0, -6, 2.4, 0, Math.PI * 2)); ctx.fill()
+      P(() => { ctx.moveTo(0, -3); ctx.lineTo(0, 5) }); ctx.stroke()
+      P(() => { ctx.moveTo(-4, 7); ctx.lineTo(0, 5); ctx.lineTo(4, 7) }); ctx.stroke()
+      ctx.lineWidth = 2; P(() => { ctx.moveTo(-2, -1); ctx.lineTo(9, -3) }); ctx.stroke()
+      break
+    case 'warrior':
+      P(() => ctx.arc(0, -5, 2.4, 0, Math.PI * 2)); ctx.fill()
+      P(() => { ctx.moveTo(0, -2); ctx.lineTo(0, 6) }); ctx.stroke()
+      P(() => { ctx.moveTo(-2, 0); ctx.lineTo(-8, 6); ctx.moveTo(2, 0); ctx.lineTo(8, 6) }); ctx.stroke()
+      break
+    case 'mech':
+      ctx.strokeRect(-5, -5, 10, 8)
+      P(() => { ctx.moveTo(-5, 3); ctx.lineTo(-7, 8); ctx.moveTo(5, 3); ctx.lineTo(7, 8) }); ctx.stroke()
+      P(() => { ctx.moveTo(0, -5); ctx.lineTo(0, -9) }); ctx.stroke()
+      break
+    case 'tank':
+      ctx.strokeRect(-7, 0, 14, 6)
+      P(() => ctx.arc(0, 0, 3, Math.PI, 0)); ctx.stroke()
+      ctx.lineWidth = 2; P(() => { ctx.moveTo(0, -1); ctx.lineTo(9, -4) }); ctx.stroke()
+      break
+    case 'strider':
+      P(() => ctx.arc(0, -2, 3, 0, Math.PI * 2)); ctx.fill()
+      P(() => { ctx.moveTo(-2, 0); ctx.lineTo(-7, 8); ctx.moveTo(-1, 0); ctx.lineTo(-3, 9); ctx.moveTo(2, 0); ctx.lineTo(7, 8); ctx.moveTo(1, 0); ctx.lineTo(3, 9) }); ctx.stroke()
+      break
+    case 'flyer':
+      P(() => { ctx.moveTo(0, -6); ctx.lineTo(8, 5); ctx.lineTo(0, 2); ctx.lineTo(-8, 5); ctx.closePath() }); ctx.stroke()
+      break
+    case 'ship':
+      P(() => ctx.ellipse(0, 0, 8, 3.4, 0, 0, Math.PI * 2)); ctx.stroke()
+      P(() => { ctx.moveTo(-8, 0); ctx.lineTo(-11, 0) }); ctx.stroke()
+      break
+    case 'bug':
+      P(() => ctx.ellipse(0, 0, 4, 5.5, 0, 0, Math.PI * 2)); ctx.stroke()
+      P(() => { ctx.moveTo(-4, -2); ctx.lineTo(-8, -5); ctx.moveTo(4, -2); ctx.lineTo(8, -5) }); ctx.stroke()
+      P(() => { ctx.moveTo(-4, 2); ctx.lineTo(-8, 5); ctx.moveTo(4, 2); ctx.lineTo(8, 5) }); ctx.stroke()
+      break
+    case 'serpent':
+      P(() => { ctx.moveTo(-6, 6); ctx.quadraticCurveTo(7, 3, -2, -2); ctx.quadraticCurveTo(-9, -6, 5, -7) }); ctx.stroke()
+      break
+    case 'beast':
+      P(() => ctx.ellipse(0, 1, 6, 5, 0, 0, Math.PI * 2)); ctx.stroke()
+      P(() => { ctx.moveTo(-5, -3); ctx.lineTo(-8, -8); ctx.moveTo(5, -3); ctx.lineTo(8, -8) }); ctx.stroke()
+      break
+    case 'caster':
+      P(() => ctx.arc(0, 0, 3, 0, Math.PI * 2)); ctx.fill()
+      P(() => ctx.arc(0, 0, 7, 0, Math.PI * 2)); ctx.stroke()
+      break
+    case 'hybrid':
+      P(() => { ctx.moveTo(0, -8); ctx.lineTo(4, 0); ctx.lineTo(0, 8); ctx.lineTo(-4, 0); ctx.closePath() }); ctx.stroke()
+      P(() => ctx.arc(0, 0, 2, 0, Math.PI * 2)); ctx.fill()
+      break
+    default:
+      P(() => ctx.arc(0, 0, 4, 0, Math.PI * 2)); ctx.stroke()
+  }
+  ctx.restore()
+}
 
 const raceColor = (r: string) => (r === 'terran' ? '#3b82f6' : r === 'protoss' ? '#facc15' : '#ec4899')
 const raceShort = (r: string) => (r === 'terran' ? 'T' : r === 'protoss' ? 'P' : 'Z')
@@ -279,10 +366,8 @@ const draw = () => {
     ctx.lineWidth = isPartner ? 4 : 3
     roundRect(ctx, bx - r, by - r, r * 2, r * 2, 6)
     ctx.stroke()
-    ctx.font = '17px "Segoe UI Emoji", sans-serif'
-    ctx.textBaseline = 'middle'
-    ctx.fillStyle = '#fff'
-    ctx.fillText(bp.icon, bx, by - 1)
+    // 캐릭터 글리프(절차적)
+    drawGlyph(ctx, ARCHETYPE[bp.id] ?? 'soldier', bx, by)
     // 종족 약자 칩 (혼종은 'PZ')
     const rs = bp.races.map(raceShort).join('')
     const chipW = 5 + rs.length * 6
@@ -290,6 +375,7 @@ const draw = () => {
     roundRect(ctx, bx - r + 1, by - r + 1, chipW, 9, 2)
     ctx.fill()
     ctx.font = 'bold 8px sans-serif'
+    ctx.textBaseline = 'middle'
     ctx.fillStyle = '#fff'
     ctx.fillText(rs, bx - r + 1 + chipW / 2, by - r + 6)
     ctx.font = '8px sans-serif'
@@ -335,14 +421,87 @@ const draw = () => {
     }
   }
 
-  // 발사체
+  // 발사체 — 근접은 생략(즉시 슬래시), 원거리는 등급별 글로우 오브
   for (const p of s.projectiles) {
+    if (p.melee) continue
     const x = p.from.x + (p.to.x - p.from.x) * p.t
     const y = p.from.y + (p.to.y - p.from.y) * p.t
-    ctx.beginPath()
-    ctx.arc(x, y, 3, 0, Math.PI * 2)
+    const sz = 2.4 + p.rank * 0.8
+    ctx.save()
+    ctx.shadowColor = p.color
+    ctx.shadowBlur = 4 + p.rank * 4
     ctx.fillStyle = p.color
+    ctx.beginPath()
+    ctx.arc(x, y, sz, 0, Math.PI * 2)
     ctx.fill()
+    if (p.rank >= 3) {
+      ctx.fillStyle = '#ffffff'
+      ctx.beginPath()
+      ctx.arc(x, y, sz * 0.45, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.restore()
+  }
+
+  // 피격 임팩트 (광역=폭발, 단일=플래시, 근접=슬래시 / 등급별 강화)
+  for (const im of s.impacts) {
+    if (!impactStart.has(im.id)) impactStart.set(im.id, now)
+    const age = now - impactStart.get(im.id)!
+    const dur = im.splash > 0 ? 460 : 320
+    const k = Math.min(age / dur, 1)
+    ctx.save()
+    if (im.melee) {
+      ctx.globalAlpha = 1 - k
+      ctx.strokeStyle = '#ffffff'
+      ctx.lineWidth = 2.5 + im.rank
+      const rr = 6 + k * 12
+      ctx.beginPath()
+      ctx.arc(im.x, im.y, rr, -0.9, 0.5)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(im.x, im.y, rr * 0.7, 2.2, 3.6)
+      ctx.stroke()
+    } else if (im.splash > 0) {
+      const R = im.splash
+      ctx.globalAlpha = (1 - k) * 0.5
+      ctx.fillStyle = im.color
+      ctx.beginPath()
+      ctx.arc(im.x, im.y, R * (0.3 + k * 0.7), 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 1 - k
+      ctx.strokeStyle = im.color
+      ctx.lineWidth = 2 + im.rank * 0.6
+      ctx.beginPath()
+      ctx.arc(im.x, im.y, R * (0.4 + k * 0.6), 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.fillStyle = '#ffffff'
+      const np = 5 + im.rank * 2
+      for (let i = 0; i < np; i++) {
+        const a = (Math.PI * 2 * i) / np
+        const d = R * (0.3 + k * 0.7)
+        ctx.beginPath()
+        ctx.arc(im.x + Math.cos(a) * d, im.y + Math.sin(a) * d, 1.6 * (1 - k) + 0.5, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    } else {
+      ctx.globalAlpha = 1 - k
+      ctx.strokeStyle = im.color
+      ctx.lineWidth = 1.5 + im.rank * 0.5
+      ctx.beginPath()
+      ctx.arc(im.x, im.y, 5 + k * (8 + im.rank * 3), 0, Math.PI * 2)
+      ctx.stroke()
+      if (im.rank >= 3) {
+        ctx.fillStyle = '#ffffff'
+        ctx.beginPath()
+        ctx.arc(im.x, im.y, 2.2 * (1 - k) + 0.5, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+    ctx.restore()
+    if (age >= dur) {
+      impactStart.delete(im.id)
+      props.engine.removeImpact(im.id)
+    }
   }
 
   // 합성 효과

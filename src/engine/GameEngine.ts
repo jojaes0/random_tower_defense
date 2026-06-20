@@ -1,7 +1,7 @@
 // 게임 엔진 — 실제 RTD 구조 + 난이도/클럭/개인미션/스킬/디버프/무한모드.
 // (Vue 비의존 순수 로직)
 
-import { BALANCE, DIFFICULTIES, RANGE_SCALE, RARITY_META, nextRarity } from './balance'
+import { BALANCE, DIFFICULTIES, RANGE_SCALE, RARITY_META, RARITY_ORDER, nextRarity } from './balance'
 import {
   BOSS_BLUEPRINT,
   MISSION_BLUEPRINT,
@@ -53,7 +53,19 @@ export interface GameState {
   lastGasGamble: number | null
   notifications: GameNotification[]
   effects: GameEffect[]
+  impacts: Impact[]
   message: string
+}
+
+/** 피격 임팩트(공격 명중 위치 연출) */
+export interface Impact {
+  id: number
+  x: number
+  y: number
+  splash: number // 0이면 단일
+  color: string
+  rank: number
+  melee: boolean
 }
 
 /** 합성 등 일시적 시각 효과 (GameField가 시간 기반으로 애니메이션 후 제거) */
@@ -109,6 +121,7 @@ export class GameEngine {
     lastGasGamble: null,
     notifications: [],
     effects: [],
+    impacts: [],
     message: '난이도를 선택하세요.',
   })
 
@@ -121,6 +134,16 @@ export class GameEngine {
   removeEffect = (id: number): void => {
     const i = this.state.effects.findIndex((e) => e.id === id)
     if (i >= 0) this.state.effects.splice(i, 1)
+  }
+
+  private addImpact = (x: number, y: number, splash: number, color: string, rank: number, melee: boolean): void => {
+    this.state.impacts.push({ id: this.nextUid(), x, y, splash, color, rank, melee })
+    if (this.state.impacts.length > 80) this.state.impacts.shift()
+  }
+
+  removeImpact = (id: number): void => {
+    const i = this.state.impacts.findIndex((e) => e.id === id)
+    if (i >= 0) this.state.impacts.splice(i, 1)
   }
 
   private notify = (kind: GameNotification['kind'], title: string, detail: string): void => {
@@ -533,6 +556,8 @@ export class GameEngine {
         t.dmgBonusMul = Math.min(t.dmgBonusMul + 1, 1 + BALANCE.cloneMaxStacks)
       }
       // 주기당 hits발 발사 — 대상이 부족하면 앞선 적에게 중복 타격
+      const melee = t.blueprint.melee
+      const rank = RARITY_ORDER.indexOf(t.blueprint.rarity)
       for (let i = 0; i < hits; i++) {
         const target = targets[i % targets.length]
         this.state.projectiles.push({
@@ -545,8 +570,10 @@ export class GameEngine {
           bonusVsBoss: stats.bonusVsBoss,
           color: t.blueprint.color,
           skill: t.blueprint.skill,
+          melee,
+          rank,
           t: 0,
-          speed: 6,
+          speed: melee ? 22 : 6, // 근접은 즉시 명중
         })
       }
     }
@@ -577,6 +604,7 @@ export class GameEngine {
   private resolveHit = (p: Projectile): void => {
     const primary = this.state.enemies.find((e) => e.uid === p.targetUid)
     const impact = primary ? primary.pos : p.to
+    this.addImpact(impact.x, impact.y, p.splashRadius, p.color, p.rank, p.melee)
     // 피해 대상 집합 결정
     let targets: Enemy[]
     if (p.splashRadius > 0) {

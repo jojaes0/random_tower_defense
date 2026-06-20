@@ -147,6 +147,7 @@ const buildBlueprint = (d: TowerDef): TowerBlueprint => ({
   bonusVsBoss: roleBoss[d.role],
   color: RARITY_META[d.rarity].color,
   icon: ICONS[d.id] ?? '⬢',
+  melee: d.rangeUnit <= 5, // 사거리 작은 유닛 = 근접
   skill: d.skill,
   skillDesc: d.skillDesc,
 })

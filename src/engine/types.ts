@@ -53,8 +53,10 @@ export interface TowerBlueprint {
   bonusVsBoss: number
   /** 표시 색(등급색) */
   color: string
-  /** 캐릭터 아이콘(이모지) */
+  /** 캐릭터 아이콘(이모지, 폴백용) */
   icon: string
+  /** 근접 유닛(사거리 작음) — 근접 공격 모션 */
+  melee: boolean
   /** 시그니처 스킬 */
   skill?: SkillId
   /** 스킬 설명(UI용) */
@@ -113,6 +115,10 @@ export interface Projectile {
   bonusVsBoss: number
   color: string
   skill?: SkillId
+  /** 근접 공격(슬래시) 여부 */
+  melee: boolean
+  /** 등급 랭크(0=일반 … 4=신) — 화려함 스케일 */
+  rank: number
   t: number
   speed: number
 }
