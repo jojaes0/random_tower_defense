@@ -223,13 +223,16 @@ const draw = () => {
   ctx.setLineDash([8, 10])
   ctx.stroke()
   ctx.setLineDash([])
-  ctx.font = 'bold 13px sans-serif'
+  // 시작/종료 — 경로(세로 통로) 중심선 위에 표시
+  ctx.font = 'bold 12px sans-serif'
   ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
   ctx.fillStyle = '#22c55e'
-  ctx.fillText('시작', PATH_START.x + 16, PATH_START.y - 12)
+  ctx.fillText('시작', PATH_START.x, PATH_START.y + 30)
   ctx.fillStyle = '#ef4444'
-  ctx.fillText('종료', PATH_END.x, PATH_END.y - 12)
+  ctx.fillText('종료', PATH_END.x, PATH_END.y + 30)
   ctx.textAlign = 'left'
+  ctx.textBaseline = 'alphabetic'
 
   const sel = props.engine.selectedTower
   const partner = sel ? props.engine.mergePartner(sel.uid) : null
