@@ -345,8 +345,8 @@ const draw = () => {
       ctx.lineWidth = 2
       ctx.setLineDash([])
       ctx.stroke()
-      // 감속 시 눈송이 표식
-      if (e.slowTimer > 0 && e.stunTimer <= 0) {
+      // 감속 시 눈송이 표식 — 기절과 동시에 걸려도 항상 표시
+      if (e.slowTimer > 0) {
         ctx.fillStyle = '#7dd3fc'
         ctx.font = '9px sans-serif'
         ctx.textAlign = 'center'

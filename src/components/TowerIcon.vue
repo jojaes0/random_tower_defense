@@ -22,7 +22,7 @@ const draw = () => {
 }
 
 onMounted(draw)
-watch(() => props.bp?.id, draw)
+watch(() => [props.bp?.id, props.size], draw)
 </script>
 
 <template>

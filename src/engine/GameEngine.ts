@@ -808,7 +808,8 @@ export class GameEngine {
     if (targets.length === 0) return
     t.cooldown2 = 1 / sec.attackSpeed
     const lv = t.blueprint.races.reduce((sum, r) => sum + this.state.upgrades[r], 0)
-    const damage = sec.damage * (1 + lv * BALANCE.upgradeBonusPerLevel) * t.dmgBonusMul
+    const buff = this.state.allyBuffTimer > 0 ? this.state.allyBuffMul : 1 // 말라쉬 창조의 숨결
+    const damage = sec.damage * (1 + lv * BALANCE.upgradeBonusPerLevel) * t.dmgBonusMul * buff
     const target = targets[0]
     this.state.projectiles.push({
       uid: this.nextUid(),
@@ -874,10 +875,11 @@ export class GameEngine {
     } else {
       targets = primary ? [primary] : []
     }
-    for (const e of targets) {
+    for (let ti = 0; ti < targets.length; ti++) {
+      const e = targets[ti]
       let dmg = e.isBoss ? p.damage * p.bonusVsBoss : p.damage
-      // 다중타격 2차 대상(쿠쿨자 쿠션 등)은 감쇠
-      if (p.multiMul !== undefined && e.uid !== p.targetUid) dmg *= p.multiMul
+      // 다중타격 2차 대상(쿠쿨자 쿠션 등)은 감쇠. 주 대상 = 진행도 1순위(index 0)가 풀데미지
+      if (p.multiMul !== undefined && ti > 0) dmg *= p.multiMul
       // 받는 피해 증폭(약화) 적용
       if (e.ampTimer > 0) dmg *= e.ampFactor
       e.hp -= dmg
