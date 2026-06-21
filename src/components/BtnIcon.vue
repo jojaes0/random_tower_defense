@@ -21,20 +21,21 @@ defineProps<{ name: 'tower' | 'merge' | 'gas' | 'upgrade' | 'menu' }>()
       <path d="M9 14v-2a3 3 0 0 1 6 0v2" />
       <path d="M15 11l5-2.5" />
     </template>
-    <!-- 합성 모드: 두 갈래가 하나로 모이는 머지 -->
+    <!-- 합성 모드: 작은 두 조각 → 위로 합쳐진 큰 조각(승급 화살표) -->
     <template v-else-if="name === 'merge'">
-      <path d="M5 5l6 6" />
-      <path d="M5 19l6-6" />
-      <path d="M11 12h8" />
-      <path d="M16 9l3 3-3 3" />
+      <rect x="3.5" y="14.5" width="6" height="6" rx="1.2" />
+      <rect x="14.5" y="14.5" width="6" height="6" rx="1.2" />
+      <path d="M7 14.5l5-5 5 5" />
+      <rect x="8.5" y="3.5" width="7" height="7" rx="1.4" />
     </template>
-    <!-- 가스 도박: 플라스크 + 기포 -->
+    <!-- 가스 도박: 주사위(도박) -->
     <template v-else-if="name === 'gas'">
-      <path d="M9 3h6" />
-      <path d="M10 3v5l-4.2 8a2 2 0 0 0 1.8 3h8.8a2 2 0 0 0 1.8-3L14 8V3" />
-      <path d="M7.5 15.5h9" />
-      <circle cx="11" cy="13.4" r="0.7" fill="currentColor" stroke="none" />
-      <circle cx="13.8" cy="17.2" r="0.7" fill="currentColor" stroke="none" />
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <circle cx="8.5" cy="8.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="8.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="8.5" cy="15.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="15.5" r="1.1" fill="currentColor" stroke="none" />
     </template>
     <!-- 업그레이드: 위 화살표 + 받침 바 -->
     <template v-else-if="name === 'upgrade'">
