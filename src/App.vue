@@ -40,6 +40,16 @@ const onPick = () => {
   buildMode.value = 'idle'
   heroId.value = legendId.value = null
 }
+
+// 가스 도박 — 클릭마다 버튼 위로 "+N" 플로팅 텍스트(연타 피드백)
+const gasPops = ref<{ id: number; amount: number }[]>([])
+let gasPopSeq = 0
+const doGamble = () => {
+  if (!engine.gambleGas()) return
+  const id = ++gasPopSeq
+  gasPops.value.push({ id, amount: state.lastGasGamble ?? 0 })
+  setTimeout(() => (gasPops.value = gasPops.value.filter((p) => p.id !== id)), 850)
+}
 const selectLegend = (id: string) => {
   if (buildMode.value === 'legend' && legendId.value === id) {
     buildMode.value = 'idle'
@@ -252,7 +262,12 @@ const toggleMenu = () => {
     <div class="bottombar">
       <button class="bbtn" :class="{ active: buildMode === 'common' }" :disabled="state.minerals < BALANCE.towerCost" @click="setCommon"><i>🎲</i><span>일반 타워</span></button>
       <button class="bbtn" :class="{ active: buildMode === 'merge' }" @click="setMerge"><i>⚙</i><span>합성 모드</span></button>
-      <button class="bbtn" :disabled="state.minerals < BALANCE.gasExchangeCost" @click="engine.gambleGas()"><i>⛽</i><span>가스 도박</span></button>
+      <div class="bbtn-slot gas-wrap">
+        <button class="bbtn" :disabled="state.minerals < BALANCE.gasExchangeCost" @click="doGamble"><i>⛽</i><span>가스 도박</span></button>
+        <div class="gas-pops">
+          <div v-for="p in gasPops" :key="p.id" class="gas-pop">+{{ p.amount }}</div>
+        </div>
+      </div>
 
       <div class="bbtn-slot">
         <div v-if="upgOpen" class="upg-pop">
@@ -439,6 +454,10 @@ const toggleMenu = () => {
 /* 버튼 슬롯(팝오버를 해당 버튼 위에 고정) */
 .bbtn-slot { position: relative; flex: 1; display: flex; }
 .bbtn-slot .bbtn { flex: 1; }
+/* 가스 도박 획득 플로팅 +N */
+.gas-pops { position: absolute; bottom: calc(100% + 2px); left: 0; right: 0; height: 0; pointer-events: none; }
+.gas-pop { position: absolute; bottom: 0; left: 50%; font-size: 15px; font-weight: 800; color: #86efac; white-space: nowrap; text-shadow: 0 1px 4px #000, 0 0 8px rgba(134, 239, 172, 0.55); animation: gaspop 0.85s ease-out forwards; }
+@keyframes gaspop { 0% { opacity: 0; transform: translate(-50%, 8px) scale(0.7); } 20% { opacity: 1; transform: translate(-50%, 0) scale(1.12); } 100% { opacity: 0; transform: translate(-50%, -28px) scale(1); } }
 
 /* 업그레이드 위로 펼침(업그레이드 버튼 기준, 고정 너비) */
 .upg-pop { position: absolute; right: 0; bottom: calc(100% + 6px); width: 240px; max-width: 94vw; background: rgba(11, 18, 32, 0.97); border: 1px solid #1f2d45; border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
