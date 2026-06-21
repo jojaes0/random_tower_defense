@@ -352,10 +352,10 @@ const toggleMenu = () => {
 .notice.error { color: #fca5a5; border-color: #b91c1c; }
 .notice.success { color: #86efac; border-color: #15803d; }
 .notice.info { color: #93c5fd; border-color: #1d4ed8; }
-.notice-enter-active { transition: all 0.25s cubic-bezier(0.2, 1.4, 0.4, 1); }
-.notice-leave-active { transition: all 0.3s ease; position: absolute; }
+.notice-enter-active { transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.2, 1.4, 0.4, 1); }
+.notice-leave-active { transition: opacity 0.4s ease, transform 0.4s ease; }
 .notice-enter-from { opacity: 0; transform: translateY(14px) scale(0.92); }
-.notice-leave-to { opacity: 0; transform: translateY(-8px); }
+.notice-leave-to { opacity: 0; transform: translateY(18px); }
 
 /* 토스트 */
 .toasts { position: fixed; top: 108px; left: 50%; transform: translateX(-50%); z-index: 40; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: max-content; max-width: 92vw; }
