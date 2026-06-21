@@ -35,6 +35,11 @@ const selectHero = (id: string) => {
     showMenu.value = false
   }
 }
+// 영웅/전설 선택권으로 1기 설치 완료 → 모드 해제(연속 설치 방지)
+const onPick = () => {
+  buildMode.value = 'idle'
+  heroId.value = legendId.value = null
+}
 const selectLegend = (id: string) => {
   if (buildMode.value === 'legend' && legendId.value === id) {
     buildMode.value = 'idle'
@@ -58,6 +63,22 @@ watch(
         engine.dismissNotification(n.id)
         scheduled.delete(n.id)
       }, 4200)
+    }
+  },
+)
+
+// 하단 즉시 안내(notice) 자동 제거
+const scheduledNotice = new Set<number>()
+watch(
+  () => state.notices.map((n) => n.id).join(','),
+  () => {
+    for (const n of state.notices) {
+      if (scheduledNotice.has(n.id)) continue
+      scheduledNotice.add(n.id)
+      setTimeout(() => {
+        engine.dismissNotice(n.id)
+        scheduledNotice.delete(n.id)
+      }, 2200)
     }
   },
 )
@@ -140,7 +161,7 @@ const toggleMenu = () => {
 <template>
   <div class="app">
     <!-- 전체화면 맵 (배경) -->
-    <GameField :engine="engine" :build-mode="buildMode" :hero-id="heroId" :legend-id="legendId" />
+    <GameField :engine="engine" :build-mode="buildMode" :hero-id="heroId" :legend-id="legendId" @pick="onPick" />
 
     <!-- 체력 손실 플래시 -->
     <div v-if="lifeFlash" :key="lifeFlash" class="life-vignette"></div>
@@ -154,6 +175,11 @@ const toggleMenu = () => {
         <div class="toast-title">{{ n.kind === 'quest' ? '🏆' : n.kind === 'boss' ? '☠️' : n.kind === 'round' ? '⚔️' : '🎯' }} {{ n.title }}</div>
         <div class="toast-detail">{{ n.detail }}</div>
       </div>
+    </TransitionGroup>
+
+    <!-- 하단 즉시 안내(합성 결과·실패·미션 준비) -->
+    <TransitionGroup name="notice" tag="div" class="notices">
+      <div v-for="n in state.notices" :key="n.id" class="notice" :class="n.kind">{{ n.text }}</div>
     </TransitionGroup>
 
     <!-- 상단바 (오버레이) : 라운드·시간·배속 / 시작 -->
@@ -188,7 +214,7 @@ const toggleMenu = () => {
       <span class="message">{{ state.message }}</span>
       <span v-if="preview && state.phase === 'building'" class="preview" :class="{ boss: preview.type === 'boss' }">
         다음 R{{ preview.round }}: <template v-if="preview.type === 'boss'">☠️</template><template v-else>잡몹×{{ preview.count }}</template> HP<b>{{ fmt(preview.hp) }}</b>
-        <span v-if="preview.round === BALANCE.totalRounds && !state.endless" class="final-warn">⚠️막으면 패배</span>
+        <span v-if="preview.round === BALANCE.totalRounds && !state.endless" class="final-warn">⚠️못 막으면 패배</span>
       </span>
     </div>
 
@@ -298,7 +324,7 @@ const toggleMenu = () => {
     <!-- 승패 -->
     <div v-if="state.phase === 'won' || state.phase === 'lost'" class="overlay">
       <div class="modal">
-        <h2 :class="state.phase">{{ state.phase === 'won' ? '🎉 50라운드 클리어!' : '💀 패배' }}</h2>
+        <h2 :class="state.phase">{{ state.phase === 'won' ? '🎉 50라운드 클리어!' : `💀 라운드 ${state.round} 패배` }}</h2>
         <p>{{ state.message }}</p>
         <p class="muted">킬 {{ state.killCount }} · 테라진 {{ state.terrazine }} · 시간 {{ mmss(state.elapsed) }}</p>
         <div class="modal-actions">
@@ -319,6 +345,17 @@ const toggleMenu = () => {
 .life-msgs { position: fixed; top: 88px; left: 50%; transform: translateX(-50%); z-index: 36; pointer-events: none; display: flex; flex-direction: column; gap: 2px; align-items: center; }
 .life-msg { color: #ef4444; font-weight: 800; font-size: 24px; text-shadow: 0 2px 6px #000, 0 0 10px rgba(239, 68, 68, 0.6); animation: lifeup 1.3s ease-out forwards; }
 @keyframes lifeup { 0% { opacity: 0; transform: translateY(12px) scale(0.8); } 15% { opacity: 1; transform: translateY(0) scale(1.15); } 100% { opacity: 0; transform: translateY(-34px); } }
+
+/* 하단 즉시 안내(스타크래프트 시스템 메시지 식) — 하단 바 위 중앙 */
+.notices { position: fixed; bottom: 112px; left: 50%; transform: translateX(-50%); z-index: 41; display: flex; flex-direction: column; gap: 5px; align-items: center; pointer-events: none; width: max-content; max-width: 92vw; }
+.notice { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; text-align: center; background: rgba(8, 13, 24, 0.92); border: 1px solid #334155; color: #e2e8f0; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45); }
+.notice.error { color: #fca5a5; border-color: #b91c1c; }
+.notice.success { color: #86efac; border-color: #15803d; }
+.notice.info { color: #93c5fd; border-color: #1d4ed8; }
+.notice-enter-active { transition: all 0.25s cubic-bezier(0.2, 1.4, 0.4, 1); }
+.notice-leave-active { transition: all 0.3s ease; position: absolute; }
+.notice-enter-from { opacity: 0; transform: translateY(14px) scale(0.92); }
+.notice-leave-to { opacity: 0; transform: translateY(-8px); }
 
 /* 토스트 */
 .toasts { position: fixed; top: 108px; left: 50%; transform: translateX(-50%); z-index: 40; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: max-content; max-width: 92vw; }

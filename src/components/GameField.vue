@@ -11,6 +11,8 @@ const props = defineProps<{
   heroId: string | null
   legendId: string | null
 }>()
+// 영웅/전설 선택권 건설 완료 시 부모에 알려 모드를 1회로 해제
+const emit = defineEmits<{ pick: [] }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const wrapRef = ref<HTMLDivElement | null>(null)
@@ -161,11 +163,13 @@ const handleTap = (clientX: number, clientY: number) => {
   }
   if (props.buildMode === 'hero' && props.heroId) {
     if (hit) return // 영웅 설치 모드에서 이미 설치된 칸 → 동작 없음
-    return void props.engine.buildHeroTower(props.heroId, pos)
+    if (props.engine.buildHeroTower(props.heroId, pos)) emit('pick') // 1회 설치 후 모드 해제
+    return
   }
   if (props.buildMode === 'legend' && props.legendId) {
     if (hit) return
-    return void props.engine.buildLegendTower(props.legendId, pos)
+    if (props.engine.buildLegendTower(props.legendId, pos)) emit('pick')
+    return
   }
   if (props.buildMode === 'merge') {
     if (!hit) return void props.engine.selectTower(null)
@@ -500,8 +504,53 @@ const draw = () => {
       ctx.beginPath()
       ctx.arc(im.x, im.y, 7 + k * 9, -1.0, 0.5)
       ctx.stroke()
+    } else if (im.splash > 0 && im.splashShape === 'cone') {
+      // 화염방사: 공격 방향으로 뻗는 부채꼴
+      const R = im.splash * 1.5
+      const ang = Math.atan2(im.y - im.fromY, im.x - im.fromX)
+      const half = 0.5 // 부채꼴 반각(rad)
+      ctx.translate(im.x, im.y)
+      ctx.rotate(ang)
+      const grad = ctx.createLinearGradient(0, 0, R, 0)
+      grad.addColorStop(0, '#fb923c')
+      grad.addColorStop(1, 'rgba(249,115,22,0)')
+      ctx.globalAlpha = (1 - k) * 0.5
+      ctx.fillStyle = grad
+      ctx.beginPath()
+      ctx.moveTo(0, 0)
+      ctx.arc(0, 0, R * (0.6 + k * 0.4), -half, half)
+      ctx.closePath()
+      ctx.fill()
+    } else if (im.splash > 0 && im.splashShape === 'line') {
+      // 일직선 포격: 공격 방향으로 길게 뻗는 띠
+      const L = im.splash * 2.6
+      const ang = Math.atan2(im.y - im.fromY, im.x - im.fromX)
+      ctx.translate(im.x, im.y)
+      ctx.rotate(ang)
+      ctx.globalAlpha = (1 - k) * 0.55
+      ctx.strokeStyle = im.color
+      ctx.lineCap = 'round'
+      ctx.lineWidth = im.splash * 0.5 * (1 - k * 0.4)
+      ctx.beginPath()
+      ctx.moveTo(-im.splash * 0.4, 0)
+      ctx.lineTo(L * (0.5 + k * 0.5), 0)
+      ctx.stroke()
+    } else if (im.splash > 0 && im.splashShape === 'cross') {
+      // 십자 포격: 가로·세로 두 띠
+      const L = im.splash * 1.4
+      ctx.globalAlpha = (1 - k) * 0.5
+      ctx.strokeStyle = im.color
+      ctx.lineCap = 'round'
+      ctx.lineWidth = im.splash * 0.32 * (1 - k * 0.4)
+      const r = L * (0.55 + k * 0.45)
+      ctx.beginPath()
+      ctx.moveTo(im.x - r, im.y)
+      ctx.lineTo(im.x + r, im.y)
+      ctx.moveTo(im.x, im.y - r)
+      ctx.lineTo(im.x, im.y + r)
+      ctx.stroke()
     } else if (im.splash > 0) {
-      // 일반 스플래시 — 은은한 링 + 옅은 채움(요란하지 않게)
+      // 일반 스플래시(원형) — 은은한 링 + 옅은 채움(요란하지 않게)
       const R = im.splash
       ctx.globalAlpha = (1 - k) * 0.13
       ctx.fillStyle = im.color

@@ -25,6 +25,7 @@ import type {
   Projectile,
   RaceId,
   Rarity,
+  SplashShape,
   Tower,
   TowerBlueprint,
   UpgradeLevels,
@@ -58,6 +59,7 @@ export interface GameState {
   questsDone: Record<string, boolean>
   lastGasGamble: number | null
   notifications: GameNotification[]
+  notices: GameNotice[]
   effects: GameEffect[]
   impacts: Impact[]
   message: string
@@ -77,6 +79,7 @@ export interface Impact {
   color: string
   rank: number
   melee: boolean
+  splashShape?: SplashShape
 }
 
 /** 합성 등 일시적 시각 효과 (GameField가 시간 기반으로 애니메이션 후 제거) */
@@ -93,6 +96,13 @@ export interface GameNotification {
   kind: 'quest' | 'boss' | 'mission' | 'round'
   title: string
   detail: string
+}
+
+/** 하단 즉시 안내(스타크래프트 "미네랄이 부족합니다" 식) */
+export interface GameNotice {
+  id: number
+  text: string
+  kind: 'info' | 'success' | 'error'
 }
 
 const randItem = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
@@ -133,6 +143,7 @@ export class GameEngine {
     questsDone: {},
     lastGasGamble: null,
     notifications: [],
+    notices: [],
     effects: [],
     impacts: [],
     message: '난이도를 선택하세요.',
@@ -152,7 +163,7 @@ export class GameEngine {
   }
 
   private addImpact = (p: Projectile, x: number, y: number): void => {
-    this.state.impacts.push({ id: this.nextUid(), x, y, fromX: p.from.x, fromY: p.from.y, splash: p.splashRadius, color: p.color, rank: p.rank, melee: p.melee })
+    this.state.impacts.push({ id: this.nextUid(), x, y, fromX: p.from.x, fromY: p.from.y, splash: p.splashRadius, color: p.color, rank: p.rank, melee: p.melee, splashShape: p.splashShape })
     if (this.state.impacts.length > 80) this.state.impacts.shift()
   }
 
@@ -170,6 +181,17 @@ export class GameEngine {
   dismissNotification = (id: number): void => {
     const i = this.state.notifications.findIndex((n) => n.id === id)
     if (i >= 0) this.state.notifications.splice(i, 1)
+  }
+
+  /** 하단 즉시 안내 추가(합성 결과·실패·미션 준비 등) */
+  private pushNotice = (text: string, kind: GameNotice['kind']): void => {
+    this.state.notices.push({ id: this.nextUid(), text, kind })
+    if (this.state.notices.length > 3) this.state.notices.shift()
+  }
+
+  dismissNotice = (id: number): void => {
+    const i = this.state.notices.findIndex((n) => n.id === id)
+    if (i >= 0) this.state.notices.splice(i, 1)
   }
 
   private nextUid = (): number => this.uid++
@@ -388,7 +410,9 @@ export class GameEngine {
     const bp = randItem(TOWERS_BY_RARITY[up])
     this.placeTower(bp, pos)
     this.addEffect(pos, 'merge-success')
-    this.state.message = `합성 성공 → [${RARITY_META[up].label}] ${bp.name}(${RACE_BY_ID[bp.race].short})!`
+    const msg = `합성 성공 → [${RARITY_META[up].label}] ${bp.name}(${RACE_BY_ID[bp.race].short})!`
+    this.state.message = msg
+    this.pushNotice(msg, 'success')
     this.afterChange()
     return true
   }
@@ -538,7 +562,12 @@ export class GameEngine {
     // 첫 수동 시작 이후부터 시간/카운트다운이 흐른다. (배속이면 dt가 이미 배속 적용됨)
     if (s.autoStarted) {
       s.elapsed += dt
-      for (const m of s.missions) if (m.cooldownRemaining > 0) m.cooldownRemaining = Math.max(0, m.cooldownRemaining - dt)
+      for (const m of s.missions) {
+        if (m.cooldownRemaining > 0) {
+          m.cooldownRemaining = Math.max(0, m.cooldownRemaining - dt)
+          if (m.cooldownRemaining === 0) this.pushNotice(`[${m.key}] ${m.name} 미션 준비 완료`, 'info')
+        }
+      }
       // 대기 중 자동 시작 카운트다운
       if (s.phase === 'building' && s.nextRoundCountdown > 0) {
         s.nextRoundCountdown = Math.max(0, s.nextRoundCountdown - dt)
@@ -700,6 +729,7 @@ export class GameEngine {
           slowFac: projSlowFac,
           ampFac: projAmpFac,
           multiMul: t.blueprint.multiMul,
+          splashShape: t.blueprint.splashShape,
           melee,
           rank,
           t: 0,
@@ -965,6 +995,7 @@ export class GameEngine {
 
   private fail = (msg: string): boolean => {
     this.state.message = msg
+    this.pushNotice(msg, 'error')
     this.onChange()
     return false
   }

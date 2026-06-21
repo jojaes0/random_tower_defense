@@ -11,6 +11,7 @@ import type {
   Rarity,
   Role,
   SkillId,
+  SplashShape,
   TowerBlueprint,
 } from './types'
 
@@ -61,6 +62,7 @@ interface TowerDef {
   slowFac?: number
   ampFac?: number
   multiMul?: number
+  splashShape?: SplashShape
   skillDesc?: string
   /** 보조 무기(예: 골리앗 미사일) — 본 무기와 동시 운용, 독립 스탯 */
   secondary?: { dps: number; interval: number; rangeUnit: number; splash?: number }
@@ -102,11 +104,11 @@ const DEFS: TowerDef[] = [
   { id: 'reaver', name: '파괴자', race: 'protoss', rarity: 'hero', role: 'line', dps: 247, hits: 1, interval: 1.8, rangeUnit: 7.2, skill: 'multi3', skillChance: 0.4, skillDesc: '확률적 갑충탄 다중 타격' },
   { id: 'swarm_host', name: '군단 숙주', race: 'zerg', rarity: 'hero', role: 'line', dps: 52, hits: 1, interval: 2.5, rangeUnit: 7.2, skill: 'summon', skillDesc: '식충 4마리 소환 — 맵을 돌며 적 공격(본체는 약함)' },
   { id: 'queen', name: '여왕', race: 'zerg', rarity: 'hero', role: 'balance', dps: 364, hits: 1, interval: 1.5, rangeUnit: 9, splash: 50, skill: 'slow', skillChance: 0.3, skillDesc: '인스네어 — 범위 확률 감속' },
-  { id: 'primal_igniter', name: '원시 점화자', race: 'zerg', rarity: 'hero', role: 'line', dps: 195, hits: 1, interval: 1, rangeUnit: 6, splash: 58, skillDesc: '화염방사 — 범위 공격' },
+  { id: 'primal_igniter', name: '원시 점화자', race: 'zerg', rarity: 'hero', role: 'line', dps: 195, hits: 1, interval: 1, rangeUnit: 6, splash: 58, splashShape: 'cone', skillDesc: '화염방사 — 부채꼴 범위' },
 
   // ── 전설(legend) 8 ──────────────────────────────────────────────
-  { id: 'valerius', name: '발리우스', race: 'terran', rarity: 'legend', role: 'line', dps: 527, hits: 1, interval: 1, rangeUnit: 7.2, splash: 48, splashChance: 0.35, skillDesc: '확률적 일직선 포격(범위)' },
-  { id: 'warfield', name: '워필드', race: 'terran', rarity: 'legend', role: 'line', dps: 585, hits: 1, interval: 1.04, rangeUnit: 7.2, splash: 42, splashChance: 0.35, skillDesc: '확률적 십자 범위 피해' },
+  { id: 'valerius', name: '발리우스', race: 'terran', rarity: 'legend', role: 'line', dps: 527, hits: 1, interval: 1, rangeUnit: 7.2, splash: 48, splashChance: 0.35, splashShape: 'line', skillDesc: '확률적 일직선 포격(범위)' },
+  { id: 'warfield', name: '워필드', race: 'terran', rarity: 'legend', role: 'line', dps: 585, hits: 1, interval: 1.04, rangeUnit: 7.2, splash: 42, splashChance: 0.35, splashShape: 'cross', skillDesc: '확률적 십자 범위 피해' },
   { id: 'mojo', name: '모조', race: 'protoss', rarity: 'legend', role: 'boss', dps: 1200, hits: 1, interval: 1.2, rangeUnit: 7.2, skillDesc: '스킬 없음 — 높은 단일 DPS' },
   { id: 'mohandar', name: '모한다르', race: 'protoss', rarity: 'legend', role: 'boss', dps: 128, hits: 1, interval: 1, rangeUnit: 11, skill: 'charge', skillDesc: '3단 충전(공허 포격기) — 연속 공격 시 피해 증가' },
   { id: 'urun', name: '우룬', race: 'protoss', rarity: 'legend', role: 'line', dps: 273, hits: 2, interval: 0.8, rangeUnit: 7.2, splash: 54, splashChance: 0.25, skillDesc: '과부하 — 주기적 주변 범위 난사' },
@@ -169,6 +171,7 @@ const buildBlueprint = (d: TowerDef): TowerBlueprint => ({
   slowFac: d.slowFac,
   ampFac: d.ampFac,
   multiMul: d.multiMul,
+  splashShape: d.splashShape,
   skillDesc: d.skillDesc,
   secondary: d.secondary && {
     damage: Math.round(d.secondary.dps * d.secondary.interval),

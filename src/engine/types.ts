@@ -14,6 +14,9 @@ export type SkillId = 'clone' | 'slow' | 'multi3' | 'stun' | 'charge' | 'summon'
 /** 듀크 대체모드 종류 */
 export type DukeMode = 'fast' | 'power' | 'aoe' | null
 
+/** 범위 공격 모양 — circle(원형)·cone(부채꼴/화염)·line(일직선)·cross(십자) */
+export type SplashShape = 'circle' | 'cone' | 'line' | 'cross'
+
 export type GamePhase = 'select-difficulty' | 'building' | 'wave' | 'won' | 'lost'
 
 export interface Vec2 {
@@ -74,6 +77,8 @@ export interface TowerBlueprint {
   ampFac?: number
   /** 다중타격 2차 대상(주 대상 외) 피해 배율(쿠쿨자 쿠션 1/3 등) */
   multiMul?: number
+  /** 범위 공격 모양(미지정 시 circle) */
+  splashShape?: SplashShape
   /** 스킬 설명(UI용) */
   skillDesc?: string
   /** 보조 무기(예: 골리앗 미사일) — 본 무기와 별개 쿨다운·사거리·위력으로 동시 운용 */
@@ -173,6 +178,7 @@ export interface Projectile {
   slowFac?: number
   ampFac?: number
   multiMul?: number
+  splashShape?: SplashShape
   /** 근접 공격(슬래시) 여부 */
   melee: boolean
   /** 미사일(보조 무기) 여부 — 렌더 구분 */
