@@ -287,27 +287,22 @@ const draw = () => {
       ctx.fill()
     }
     ctx.globalAlpha = 1
-    // 말라쉬 창조의 숨결 — 아군 공격력 버프 활성 시 금색 글로우 + 배지
-    if (s.allyBuffTimer > 0) {
-      ctx.save()
-      ctx.shadowColor = '#fbbf24'
-      ctx.shadowBlur = 8
-      ctx.strokeStyle = '#fbbf24'
-      ctx.lineWidth = 2
-      roundRect(ctx, bx - r - 1, by - r - 1, r * 2 + 2, r * 2 + 2, 7)
-      ctx.stroke()
-      ctx.restore()
-      ctx.fillStyle = '#fbbf24'
-      ctx.font = 'bold 10px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('▲', bx + r - 3, by - r + 3)
-      ctx.textAlign = 'left'
-    }
     // 테두리 = 등급 색 (선택은 사거리 원으로 표시 → 별도 강조 없음, 합성짝만 시안)
     ctx.strokeStyle = isPartner ? '#22d3ee' : bp.color
     ctx.lineWidth = isPartner ? 4 : 3
     roundRect(ctx, bx - r, by - r, r * 2, r * 2, 6)
     ctx.stroke()
+    // 말라쉬 창조의 숨결 — 버프 활성 시 박스 바깥 금색 글로우 링(상태 완전 격리, 본체 스타일 불변)
+    if (s.allyBuffTimer > 0) {
+      ctx.save()
+      ctx.shadowColor = '#fbbf24'
+      ctx.shadowBlur = 6
+      ctx.strokeStyle = '#fbbf24'
+      ctx.lineWidth = 2
+      roundRect(ctx, bx - r - 2.5, by - r - 2.5, r * 2 + 5, r * 2 + 5, 8)
+      ctx.stroke()
+      ctx.restore()
+    }
     // 캐릭터 글리프(절차적)
     drawGlyph(ctx, bp.id, bx, by)
     // 종족 약자 칩 (혼종은 'PZ')
