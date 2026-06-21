@@ -337,12 +337,16 @@ const toggleMenu = () => {
       </div>
     </div>
 
-    <!-- 승패 -->
+    <!-- 승패 결과창 -->
     <div v-if="state.phase === 'won' || state.phase === 'lost'" class="overlay">
-      <div class="modal">
-        <h2 :class="state.phase">{{ state.phase === 'won' ? '🎉 50라운드 클리어!' : `💀 라운드 ${state.round} 패배` }}</h2>
-        <p>{{ state.message }}</p>
-        <p class="muted">킬 {{ state.killCount }} · 테라진 {{ state.terrazine }} · 시간 {{ mmss(state.elapsed) }}</p>
+      <div class="result" :class="state.phase">
+        <div class="result-emoji">{{ state.phase === 'won' ? '🏆' : '💀' }}</div>
+        <h2 class="result-title">{{ state.phase === 'won' ? '승리!' : '패배' }}</h2>
+        <div class="result-grid">
+          <div class="rstat"><span>도달 라운드</span><b>{{ state.round }}</b></div>
+          <div class="rstat"><span>처치</span><b>{{ state.killCount }}</b></div>
+          <div class="rstat"><span>시간</span><b>{{ mmss(state.elapsed) }}</b></div>
+        </div>
         <div class="modal-actions">
           <button v-if="state.phase === 'won'" class="start" @click="engine.continueEndless()">♾ 무한모드 계속 (+◆{{ BALANCE.endlessTerrazineGrant }})</button>
           <button class="reset" @click="engine.reset()">다시 시작</button>
@@ -353,7 +357,7 @@ const toggleMenu = () => {
 </template>
 
 <style scoped>
-.app { position: relative; height: 100dvh; width: 100%; overflow: hidden; background: #060a14; }
+.app { position: relative; height: 100dvh; width: 100%; overflow: hidden; background: #060a14; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
 
 /* 체력 손실 플래시 */
 .life-vignette { position: fixed; inset: 0; z-index: 35; pointer-events: none; box-shadow: inset 0 0 90px 24px rgba(239, 68, 68, 0.75); animation: lifeflash 0.55s ease-out forwards; }
@@ -417,10 +421,11 @@ const toggleMenu = () => {
 .pause-ico::before, .pause-ico::after { content: ''; position: absolute; top: 0; width: 3px; height: 11px; background: currentColor; border-radius: 1px; }
 .pause-ico::before { left: 0; }
 .pause-ico::after { right: 0; }
-.start-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.start-wrap { position: relative; display: flex; flex-direction: column; align-items: center; }
 .start { padding: 8px 12px; font-weight: 700; font-size: 13px; background: #2563eb; border: none; border-radius: 7px; color: #fff; cursor: pointer; white-space: nowrap; }
 .start:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
-.start-cd { font-size: 10px; color: #93c5fd; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* 카운트다운은 absolute로 띄워 상단바 높이를 바꾸지 않음(라운드 진행/종료 시 레이아웃 불변) */
+.start-cd { position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); font-size: 10px; color: #93c5fd; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
 
 /* 메시지/미리보기 오버레이 */
 .msgbar { position: absolute; top: 74px; left: 8px; right: 8px; z-index: 8; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; pointer-events: none; }
@@ -456,7 +461,7 @@ const toggleMenu = () => {
 .bbtn-slot { position: relative; flex: 1; display: flex; }
 .bbtn-slot .bbtn { flex: 1; }
 /* 가스 도박 획득 플로팅 +N */
-.gas-pops { position: absolute; bottom: calc(100% + 2px); left: 0; right: 0; height: 0; pointer-events: none; }
+.gas-pops { position: absolute; bottom: calc(100% + 2px); left: 0; right: 0; height: 0; pointer-events: none; z-index: 60; }
 .gas-pop { position: absolute; bottom: 0; left: 50%; font-size: 15px; font-weight: 800; color: #86efac; white-space: nowrap; text-shadow: 0 1px 4px #000, 0 0 8px rgba(134, 239, 172, 0.55); animation: gaspop 0.85s ease-out forwards; }
 @keyframes gaspop { 0% { opacity: 0; transform: translate(-50%, 8px) scale(0.7); } 20% { opacity: 1; transform: translate(-50%, 0) scale(1.12); } 100% { opacity: 0; transform: translate(-50%, -28px) scale(1); } }
 
@@ -508,6 +513,21 @@ const toggleMenu = () => {
 .diff-card:hover { border-color: #2563eb; }
 .diff-card b { font-size: 15px; }
 .diff-card p { font-size: 12px; color: #8aa0c0; margin: 6px 0 0; }
+/* 승패 결과창 */
+.result { background: #0e1626; border: 2px solid; border-radius: 16px; padding: 24px 26px 22px; text-align: center; max-width: 420px; width: 100%; box-shadow: 0 16px 50px rgba(0, 0, 0, 0.55); }
+.result.won { border-color: #22c55e; box-shadow: 0 16px 50px rgba(0, 0, 0, 0.55), 0 0 40px rgba(34, 197, 94, 0.25); background: linear-gradient(180deg, rgba(22, 163, 74, 0.14), #0e1626 55%); }
+.result.lost { border-color: #ef4444; box-shadow: 0 16px 50px rgba(0, 0, 0, 0.55), 0 0 40px rgba(239, 68, 68, 0.2); background: linear-gradient(180deg, rgba(185, 28, 28, 0.16), #0e1626 55%); }
+.result-emoji { font-size: 44px; line-height: 1; }
+.result-title { margin: 6px 0 2px; font-size: 30px; font-weight: 900; letter-spacing: 1px; }
+.result.won .result-title { color: #4ade80; text-shadow: 0 0 16px rgba(74, 222, 128, 0.45); }
+.result.lost .result-title { color: #f87171; text-shadow: 0 0 16px rgba(248, 113, 113, 0.4); }
+.result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 18px 0 4px; }
+.rstat { background: rgba(2, 6, 16, 0.55); border: 1px solid #1f2d45; border-radius: 10px; padding: 12px 6px; display: flex; flex-direction: column; gap: 4px; }
+.rstat span { font-size: 11px; color: #8aa0c0; }
+.rstat b { font-size: 24px; font-variant-numeric: tabular-nums; color: #e2e8f0; }
+.result.won .rstat b { color: #bbf7d0; }
+.result.lost .rstat b { color: #fecaca; }
+
 .modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
 .modal-actions.row { flex-direction: row; }
 .modal-actions.row button { flex: 1; }

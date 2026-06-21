@@ -175,8 +175,30 @@ const handleTap = (clientX: number, clientY: number) => {
     if (!hit) return void props.engine.selectTower(null)
     return void props.engine.mergeTower(hit.uid) // 짝 있으면 합성, 없으면 실패 효과(정보 X)
   }
+  // 모드 해제 상태: 단일 탭=정보. 같은 타워 연속(더블탭)=같은 종류 전체 강조(개수·위치 확인)
   props.engine.selectTower(hit ? hit.uid : null)
+  if (!hit) {
+    highlightKind.value = null
+    lastTapUid = -1
+    return
+  }
+  const tnow = performance.now()
+  if (hit.uid === lastTapUid && tnow - lastTapTime < 400) {
+    highlightKind.value = hit.blueprint.id
+    clearTimeout(highlightTimer)
+    highlightTimer = window.setTimeout(() => (highlightKind.value = null), 2800)
+    lastTapUid = -1
+  } else {
+    lastTapUid = hit.uid
+    lastTapTime = tnow
+    highlightKind.value = null
+  }
 }
+// 같은 종류 강조(더블탭)
+const highlightKind = ref<string | null>(null)
+let lastTapUid = -1
+let lastTapTime = 0
+let highlightTimer = 0
 
 // ---- 효과 타이밍(시간 기반) ----
 const effectStart = new Map<number, number>()
@@ -326,6 +348,24 @@ const draw = () => {
   }
   ctx.textBaseline = 'alphabetic'
   ctx.textAlign = 'left'
+
+  // 같은 종류 강조(더블탭) — 해당 종류 전 위치에 노란 펄스 링(개수·위치 확인용)
+  if (highlightKind.value) {
+    const pulse = 0.5 + 0.5 * Math.sin(now / 180)
+    for (const t of s.towers) {
+      if (t.blueprint.id !== highlightKind.value) continue
+      const r = 16
+      ctx.save()
+      ctx.strokeStyle = '#fde047'
+      ctx.shadowColor = '#fde047'
+      ctx.shadowBlur = 6 + pulse * 7
+      ctx.globalAlpha = 0.55 + pulse * 0.4
+      ctx.lineWidth = 2.5
+      roundRect(ctx, t.pos.x - r - 3, t.pos.y - r - 3, r * 2 + 6, r * 2 + 6, 9)
+      ctx.stroke()
+      ctx.restore()
+    }
+  }
 
   // 적
   for (const e of s.enemies) {
