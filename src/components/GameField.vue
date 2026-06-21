@@ -269,7 +269,6 @@ const draw = () => {
   ctx.textBaseline = 'alphabetic'
 
   const sel = props.engine.selectedTower
-  const partner = sel ? props.engine.mergePartner(sel.uid) : null
 
   if (sel) {
     const st = props.engine.effectiveStats(sel.blueprint)
@@ -286,7 +285,6 @@ const draw = () => {
   ctx.textAlign = 'center'
   for (const t of s.towers) {
     const bp = t.blueprint
-    const isPartner = partner?.uid === t.uid
     const bx = t.pos.x
     const by = t.pos.y
     const r = 16
@@ -308,9 +306,9 @@ const draw = () => {
       ctx.fill()
     }
     ctx.globalAlpha = 1
-    // 테두리 = 등급 색 (선택은 사거리 원으로 표시 → 별도 강조 없음, 합성짝만 시안)
-    ctx.strokeStyle = isPartner ? '#22d3ee' : bp.color
-    ctx.lineWidth = isPartner ? 4 : 3
+    // 테두리 = 등급 색 (선택은 사거리 원으로 표시 → 별도 강조 없음)
+    ctx.strokeStyle = bp.color
+    ctx.lineWidth = 3
     roundRect(ctx, bx - r, by - r, r * 2, r * 2, 6)
     ctx.stroke()
     // 말라쉬 창조의 숨결 — 버프 활성 시 박스 바깥 금색 글로우 링(상태 완전 격리, 본체 스타일 불변)
