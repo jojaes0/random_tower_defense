@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import BtnIcon from '@/components/BtnIcon.vue'
 import GameField from '@/components/GameField.vue'
 import TowerIcon from '@/components/TowerIcon.vue'
 import { useGame } from '@/composables/useGame'
@@ -260,10 +261,10 @@ const toggleMenu = () => {
 
     <!-- 하단 바: 일반/합성/가스/업그레이드/메뉴 (업그레이드·메뉴는 각 버튼 위로 펼침) -->
     <div class="bottombar">
-      <button class="bbtn" :class="{ active: buildMode === 'common' }" :disabled="state.minerals < BALANCE.towerCost" @click="setCommon"><i>🎲</i><span>일반 타워</span></button>
-      <button class="bbtn" :class="{ active: buildMode === 'merge' }" @click="setMerge"><i>⚙</i><span>합성 모드</span></button>
+      <button class="bbtn" :class="{ active: buildMode === 'common' }" :disabled="state.minerals < BALANCE.towerCost" @click="setCommon"><BtnIcon name="tower" /><span>일반 타워</span></button>
+      <button class="bbtn" :class="{ active: buildMode === 'merge' }" @click="setMerge"><BtnIcon name="merge" /><span>합성 모드</span></button>
       <div class="bbtn-slot gas-wrap">
-        <button class="bbtn" :disabled="state.minerals < BALANCE.gasExchangeCost" @click="doGamble"><i>⛽</i><span>가스 도박</span></button>
+        <button class="bbtn" :disabled="state.minerals < BALANCE.gasExchangeCost" @click="doGamble"><BtnIcon name="gas" /><span>가스 도박</span></button>
         <div class="gas-pops">
           <div v-for="p in gasPops" :key="p.id" class="gas-pop">+{{ p.amount }}</div>
         </div>
@@ -278,7 +279,7 @@ const toggleMenu = () => {
             <span class="upgb-cost">▲{{ engine.upgradeCost(r.id) }}</span>
           </button>
         </div>
-        <button class="bbtn" :class="{ active: upgOpen }" @click="toggleUpg"><i>⬆</i><span>업그레이드</span></button>
+        <button class="bbtn" :class="{ active: upgOpen }" @click="toggleUpg"><BtnIcon name="upgrade" /><span>업그레이드</span></button>
       </div>
 
       <div class="bbtn-slot">
@@ -321,7 +322,7 @@ const toggleMenu = () => {
           </div>
         </div>
         </div>
-        <button class="bbtn" :class="{ active: showMenu, alert: menuAlert }" @click="toggleMenu"><i>☰</i><span>메뉴</span></button>
+        <button class="bbtn" :class="{ active: showMenu, alert: menuAlert }" @click="toggleMenu"><BtnIcon name="menu" /><span>메뉴</span></button>
       </div>
     </div>
 
