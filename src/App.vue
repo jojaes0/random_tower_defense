@@ -348,7 +348,7 @@ const toggleMenu = () => {
 
 /* 하단 즉시 안내(스타크래프트 시스템 메시지 식) — 하단 바 위 중앙 */
 .notices { position: fixed; bottom: 112px; left: 50%; transform: translateX(-50%); z-index: 41; display: flex; flex-direction: column; gap: 5px; align-items: center; pointer-events: none; width: max-content; max-width: 92vw; }
-.notice { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; text-align: center; background: rgba(8, 13, 24, 0.92); border: 1px solid #334155; color: #e2e8f0; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45); }
+.notice { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; text-align: center; white-space: nowrap; background: rgba(8, 13, 24, 0.92); border: 1px solid #334155; color: #e2e8f0; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45); }
 .notice.error { color: #fca5a5; border-color: #b91c1c; }
 .notice.success { color: #86efac; border-color: #15803d; }
 .notice.info { color: #93c5fd; border-color: #1d4ed8; }
