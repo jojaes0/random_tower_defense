@@ -185,8 +185,7 @@ const handleTap = (clientX: number, clientY: number) => {
   const tnow = performance.now()
   if (hit.uid === lastTapUid && tnow - lastTapTime < 400) {
     highlightKind.value = hit.blueprint.id
-    clearTimeout(highlightTimer)
-    highlightTimer = window.setTimeout(() => (highlightKind.value = null), 2800)
+    highlightStart = tnow // 강조 시작 시각 — 렌더에서 경과시간으로 서서히 소등
     lastTapUid = -1
   } else {
     lastTapUid = hit.uid
@@ -198,7 +197,7 @@ const handleTap = (clientX: number, clientY: number) => {
 const highlightKind = ref<string | null>(null)
 let lastTapUid = -1
 let lastTapTime = 0
-let highlightTimer = 0
+let highlightStart = 0
 
 // ---- 효과 타이밍(시간 기반) ----
 const effectStart = new Map<number, number>()
@@ -349,21 +348,28 @@ const draw = () => {
   ctx.textBaseline = 'alphabetic'
   ctx.textAlign = 'left'
 
-  // 같은 종류 강조(더블탭) — 해당 종류 전 위치에 노란 펄스 링(개수·위치 확인용)
+  // 같은 종류 강조(더블탭) — 해당 종류 전 위치에 노란 링. 경과시간으로 서서히 소등(자연스럽게 꺼짐)
   if (highlightKind.value) {
-    const pulse = 0.5 + 0.5 * Math.sin(now / 180)
-    for (const t of s.towers) {
-      if (t.blueprint.id !== highlightKind.value) continue
-      const r = 16
-      ctx.save()
-      ctx.strokeStyle = '#fde047'
-      ctx.shadowColor = '#fde047'
-      ctx.shadowBlur = 6 + pulse * 7
-      ctx.globalAlpha = 0.55 + pulse * 0.4
-      ctx.lineWidth = 2.5
-      roundRect(ctx, t.pos.x - r - 3, t.pos.y - r - 3, r * 2 + 6, r * 2 + 6, 9)
-      ctx.stroke()
-      ctx.restore()
+    const HL_DUR = 2500
+    const age = now - highlightStart
+    if (age >= HL_DUR) {
+      highlightKind.value = null
+    } else {
+      const fade = Math.pow(1 - age / HL_DUR, 1.6) // 1→0, ease-out 소등(깜빡임 없음)
+      const breath = 0.92 + 0.08 * Math.sin(now / 420) // 아주 은은한 숨결
+      for (const t of s.towers) {
+        if (t.blueprint.id !== highlightKind.value) continue
+        const r = 16
+        ctx.save()
+        ctx.strokeStyle = '#fde047'
+        ctx.shadowColor = '#fde047'
+        ctx.shadowBlur = 9 * fade
+        ctx.globalAlpha = fade * breath
+        ctx.lineWidth = 2.5
+        roundRect(ctx, t.pos.x - r - 3, t.pos.y - r - 3, r * 2 + 6, r * 2 + 6, 9)
+        ctx.stroke()
+        ctx.restore()
+      }
     }
   }
 
