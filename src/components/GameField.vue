@@ -184,7 +184,9 @@ const handleTap = (clientX: number, clientY: number) => {
   }
   const tnow = performance.now()
   if (hit.uid === lastTapUid && tnow - lastTapTime < 400) {
-    highlightKind.value = hit.blueprint.id
+    // 같은 종류가 2개 이상일 때만 강조(혼자면 헷갈리므로 효과 없음)
+    const sameKind = props.engine.state.towers.filter((t) => t.blueprint.id === hit.blueprint.id).length
+    highlightKind.value = sameKind >= 2 ? hit.blueprint.id : null
     highlightStart = tnow // 강조 시작 시각 — 렌더에서 경과시간으로 서서히 소등
     lastTapUid = -1
   } else {
