@@ -208,6 +208,7 @@ const onKey = (e: KeyboardEvent) => {
     case 'a': toggleUpg(); break
     case 's': openMenuTab('mission'); break
     case 'd': openMenuTab('terrazine'); break
+    case 'f': openMenuTab('quest'); break
     default: return
   }
   e.preventDefault()
