@@ -10,7 +10,7 @@ import type { RaceId } from '@/engine/types'
 
 const { engine, state, speed, setSpeed, togglePause, resume } = useGame()
 
-const buildMode = ref<'idle' | 'common' | 'hero' | 'legend' | 'merge'>('idle')
+const buildMode = ref<'idle' | 'common' | 'hero' | 'legend' | 'merge' | 'sell'>('idle')
 const heroId = ref<string | null>(null)
 const legendId = ref<string | null>(null)
 const showMenu = ref(false)
@@ -24,6 +24,11 @@ const setCommon = () => {
 const setMerge = () => {
   buildMode.value = buildMode.value === 'merge' ? 'idle' : 'merge'
   heroId.value = legendId.value = null
+}
+const setSell = () => {
+  buildMode.value = buildMode.value === 'sell' ? 'idle' : 'sell'
+  heroId.value = legendId.value = null
+  engine.selectTower(null)
 }
 const selectHero = (id: string) => {
   if (buildMode.value === 'hero' && heroId.value === id) {
@@ -140,12 +145,6 @@ const start = () => {
 
 const sel = computed(() => engine.selectedTower)
 const selStats = computed(() => (sel.value ? engine.effectiveStats(sel.value.blueprint, sel.value.dmgBonusMul) : null))
-const sellConfirm = ref(false)
-const sellAmount = computed(() => (sel.value ? engine.sellAmount(sel.value.blueprint.rarity) : 0))
-const doSell = () => {
-  if (sel.value) engine.sellTower(sel.value.uid)
-  sellConfirm.value = false
-}
 
 const upgPct = (race: RaceId) => +(state.upgrades[race] * BALANCE.upgradeBonusPerLevel * 100).toFixed(1)
 const raceNames = (races: RaceId[]) => races.map((r) => RACES.find((x) => x.id === r)?.name).join('·')
@@ -244,27 +243,15 @@ const toggleMenu = () => {
         <li><span>범위</span><b>{{ selStats.splashRadius > 0 ? selStats.splashRadius.toFixed(0) : '단일' }}</b></li>
         <li><span>보스</span><b>×{{ selStats.bonusVsBoss.toFixed(1) }}</b></li>
       </ul>
-      <button class="sell" @click="sellConfirm = true">판매 +{{ sellAmount }}</button>
     </aside>
 
-    <!-- 판매 확인 -->
-    <div v-if="sellConfirm && sel" class="overlay" @click.self="sellConfirm = false">
-      <div class="modal sell-modal">
-        <h2>판매하시겠어요?</h2>
-        <p>{{ sel.blueprint.name }} <span class="muted">({{ RARITY_META[sel.blueprint.rarity].label }})</span> 판매 시 <b style="color: #67e8f9">+{{ sellAmount }} 미네랄</b></p>
-        <div class="modal-actions row">
-          <button class="reset" @click="sellConfirm = false">취소</button>
-          <button class="sell-yes" @click="doSell">판매</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 하단 바: 일반/합성/가스/업그레이드/메뉴 (업그레이드·메뉴는 각 버튼 위로 펼침) -->
+    <!-- 하단 바: 일반/합성/판매/가스/업그레이드/메뉴 (업그레이드·메뉴는 각 버튼 위로 펼침) -->
     <div class="bottombar">
-      <button class="bbtn" :class="{ active: buildMode === 'common' }" :disabled="state.minerals < BALANCE.towerCost" @click="setCommon"><BtnIcon name="tower" /><span>일반 타워</span></button>
-      <button class="bbtn" :class="{ active: buildMode === 'merge' }" @click="setMerge"><BtnIcon name="merge" /><span>합성 모드</span></button>
+      <button class="bbtn" :class="{ active: buildMode === 'common' }" :disabled="state.minerals < BALANCE.towerCost" @click="setCommon"><BtnIcon name="tower" /><span>일반</span></button>
+      <button class="bbtn" :class="{ active: buildMode === 'merge' }" @click="setMerge"><BtnIcon name="merge" /><span>합성</span></button>
+      <button class="bbtn sell-btn" :class="{ active: buildMode === 'sell' }" @click="setSell"><BtnIcon name="sell" /><span>판매</span></button>
       <div class="bbtn-slot gas-wrap">
-        <button class="bbtn" :disabled="state.minerals < BALANCE.gasExchangeCost" @click="doGamble"><BtnIcon name="gas" /><span>가스 도박</span></button>
+        <button class="bbtn" :disabled="state.minerals < BALANCE.gasExchangeCost" @click="doGamble"><BtnIcon name="gas" /><span>가스</span></button>
         <div class="gas-pops">
           <div v-for="p in gasPops" :key="p.id" class="gas-pop">+{{ p.amount }}</div>
         </div>
@@ -279,7 +266,7 @@ const toggleMenu = () => {
             <span class="upgb-cost">▲{{ engine.upgradeCost(r.id) }}</span>
           </button>
         </div>
-        <button class="bbtn" :class="{ active: upgOpen }" @click="toggleUpg"><BtnIcon name="upgrade" /><span>업그레이드</span></button>
+        <button class="bbtn" :class="{ active: upgOpen }" @click="toggleUpg"><BtnIcon name="upgrade" /><span>업글</span></button>
       </div>
 
       <div class="bbtn-slot">
@@ -447,7 +434,7 @@ const toggleMenu = () => {
 .ins-stats { list-style: none; padding: 0; margin: 8px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; }
 .ins-stats li { display: flex; justify-content: space-between; font-size: 12px; }
 .ins-stats span { color: #8aa0c0; }
-.sell { width: 100%; padding: 7px; background: #7f1d1d; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 12px; }
+.sell-btn.active { border-color: #ef4444; background: #2b1414; color: #fca5a5; }
 
 /* 하단 바 */
 .bottombar { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 9; display: flex; gap: 6px; }
@@ -480,7 +467,7 @@ const toggleMenu = () => {
 .drawer-tabs { display: flex; gap: 4px; padding: 8px; overflow-x: auto; flex-shrink: 0; }
 .drawer-tabs button { flex-shrink: 0; padding: 7px 10px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 7px; color: #cbd5e1; cursor: pointer; font-size: 12px; white-space: nowrap; }
 .drawer-tabs button.on { background: #2563eb; border-color: #2563eb; color: #fff; }
-.drawer-body { padding: 12px; overflow-y: auto; }
+.drawer-body { flex: 1; min-height: 0; padding: 12px; overflow-y: auto; }
 .d-help { font-size: 11px; color: #8aa0c0; margin: 0 0 10px; line-height: 1.5; }
 .mini { padding: 8px 10px; background: #0b1220; border: 1px solid #1f2d45; border-radius: 6px; color: #e2e8f0; cursor: pointer; font-size: 12px; }
 .mini.wide { width: 100%; margin-top: 6px; text-align: left; }

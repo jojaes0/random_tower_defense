@@ -7,7 +7,7 @@ import { drawGlyph, raceColor, roundRect } from './glyph'
 
 const props = defineProps<{
   engine: GameEngine
-  buildMode: 'idle' | 'common' | 'hero' | 'legend' | 'merge'
+  buildMode: 'idle' | 'common' | 'hero' | 'legend' | 'merge' | 'sell'
   heroId: string | null
   legendId: string | null
 }>()
@@ -175,6 +175,10 @@ const handleTap = (clientX: number, clientY: number) => {
     if (!hit) return void props.engine.selectTower(null)
     return void props.engine.mergeTower(hit.uid) // 짝 있으면 합성, 없으면 실패 효과(정보 X)
   }
+  if (props.buildMode === 'sell') {
+    if (hit) props.engine.sellTower(hit.uid) // 판매 모드: 탭한 타워 즉시 판매(연속 판매)
+    return
+  }
   // 모드 해제 상태: 단일 탭=정보. 같은 타워 연속(더블탭)=같은 종류 전체 강조(개수·위치 확인)
   props.engine.selectTower(hit ? hit.uid : null)
   if (!hit) {
@@ -313,17 +317,6 @@ const draw = () => {
     ctx.lineWidth = 3
     roundRect(ctx, bx - r, by - r, r * 2, r * 2, 6)
     ctx.stroke()
-    // 말라쉬 창조의 숨결 — 버프 활성 시 박스 바깥 금색 글로우 링(상태 완전 격리, 본체 스타일 불변)
-    if (s.allyBuffTimer > 0) {
-      ctx.save()
-      ctx.shadowColor = '#fbbf24'
-      ctx.shadowBlur = 6
-      ctx.strokeStyle = '#fbbf24'
-      ctx.lineWidth = 2
-      roundRect(ctx, bx - r - 2.5, by - r - 2.5, r * 2 + 5, r * 2 + 5, 8)
-      ctx.stroke()
-      ctx.restore()
-    }
     // 캐릭터 글리프(절차적)
     drawGlyph(ctx, bp.id, bx, by)
     // 종족 약자 칩 (혼종은 'PZ')
@@ -344,6 +337,31 @@ const draw = () => {
     ctx.fill()
     ctx.fillStyle = bp.color
     ctx.fillText(bp.name, bx, by + r)
+    // 말라쉬 창조의 숨결 — 아군 버프 활성 시 우상단 버프 아이콘(금색 원+위 화살표). 상태 완전 격리
+    if (s.allyBuffTimer > 0) {
+      const ix = bx + r - 4
+      const iy = by - r + 4
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(ix, iy, 6, 0, Math.PI * 2)
+      ctx.fillStyle = '#fbbf24'
+      ctx.fill()
+      ctx.lineWidth = 1
+      ctx.strokeStyle = '#7c2d12'
+      ctx.stroke()
+      ctx.strokeStyle = '#3b1d00'
+      ctx.lineWidth = 1.6
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.beginPath()
+      ctx.moveTo(ix, iy + 2.6)
+      ctx.lineTo(ix, iy - 2.4)
+      ctx.moveTo(ix - 2.3, iy - 0.2)
+      ctx.lineTo(ix, iy - 2.9)
+      ctx.lineTo(ix + 2.3, iy - 0.2)
+      ctx.stroke()
+      ctx.restore()
+    }
   }
   ctx.textBaseline = 'alphabetic'
   ctx.textAlign = 'left'

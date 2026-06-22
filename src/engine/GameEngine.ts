@@ -431,7 +431,9 @@ export class GameEngine {
     this.state.minerals += refund
     this.state.towers = this.state.towers.filter((x) => x.uid !== uid)
     if (this.state.selectedTowerUid === uid) this.state.selectedTowerUid = null
-    this.state.message = `타워 판매 (+${refund} 미네랄).`
+    const msg = `${t.blueprint.name} 판매 (+${refund} 미네랄)`
+    this.state.message = msg
+    this.pushNotice(msg, 'info')
     this.onChange()
   }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 하단바 버튼용 라인 아이콘(이모지 대체). currentColor라 버튼 색/활성/비활성에 자동으로 맞춰진다.
-defineProps<{ name: 'tower' | 'merge' | 'gas' | 'upgrade' | 'menu' }>()
+defineProps<{ name: 'tower' | 'merge' | 'gas' | 'upgrade' | 'menu' | 'sell' }>()
 </script>
 
 <template>
@@ -43,6 +43,11 @@ defineProps<{ name: 'tower' | 'merge' | 'gas' | 'upgrade' | 'menu' }>()
       <path d="M12 4l-6 6" />
       <path d="M12 4v10" />
       <path d="M6 20h12" />
+    </template>
+    <!-- 판매: 가격표(태그) -->
+    <template v-else-if="name === 'sell'">
+      <path d="M13.5 3.5H20a0.5 0.5 0 0 1 0.5 0.5v6.5a2 2 0 0 1-0.6 1.4l-7.5 7.5a2 2 0 0 1-2.8 0l-5.5-5.5a2 2 0 0 1 0-2.8l7.5-7.5a2 2 0 0 1 1.4-0.6z" />
+      <circle cx="16.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
     </template>
     <!-- 메뉴: 햄버거 -->
     <template v-else>
