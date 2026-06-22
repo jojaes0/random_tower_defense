@@ -21,7 +21,9 @@ const setCommon = () => {
   buildMode.value = buildMode.value === 'common' ? 'idle' : 'common'
   heroId.value = legendId.value = null
 }
+const canMerge = computed(() => engine.canMergeAny())
 const setMerge = () => {
+  if (!canMerge.value && buildMode.value !== 'merge') return // 합성할 짝이 없으면 진입 불가
   buildMode.value = buildMode.value === 'merge' ? 'idle' : 'merge'
   heroId.value = legendId.value = null
 }
@@ -84,6 +86,11 @@ const selectLegend = (id: string) => {
     showMenu.value = false
   }
 }
+
+// 합성 모드 중 마지막 짝을 합쳐 더 합칠 게 없어지면 자동 해제
+watch(canMerge, (v) => {
+  if (!v && buildMode.value === 'merge') buildMode.value = 'idle'
+})
 
 const scheduled = new Set<number>()
 watch(
@@ -302,7 +309,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
     <!-- 하단 바: 타워/합성/판매/가스/업그레이드/메뉴 (업그레이드·메뉴는 각 버튼 위로 펼침) -->
     <div class="bottombar">
       <button class="bbtn" :class="{ active: buildMode === 'common' }" :disabled="state.minerals < BALANCE.towerCost" @click="setCommon"><BtnIcon name="tower" /><span>타워</span></button>
-      <button class="bbtn" :class="{ active: buildMode === 'merge' }" @click="setMerge"><BtnIcon name="merge" /><span>합성</span></button>
+      <button class="bbtn" :class="{ active: buildMode === 'merge' }" :disabled="!canMerge && buildMode !== 'merge'" @click="setMerge"><BtnIcon name="merge" /><span>합성</span></button>
       <button class="bbtn sell-btn" :class="{ active: buildMode === 'sell' }" @click="setSell"><BtnIcon name="sell" /><span>판매</span></button>
       <div class="bbtn-slot gas-wrap">
         <button class="bbtn" :disabled="state.minerals < BALANCE.gasExchangeCost" @click="doGamble"><BtnIcon name="gas" /><span>가스</span></button>

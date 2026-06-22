@@ -392,6 +392,18 @@ export class GameEngine {
     )
   }
 
+  /** 합성 가능한 짝(같은 종류·등급 2개, 신 제외)이 하나라도 있는가 — O(n) */
+  canMergeAny = (): boolean => {
+    const seen = new Set<string>()
+    for (const t of this.state.towers) {
+      if (t.blueprint.rarity === 'god') continue // 신은 합성 불가
+      const key = `${t.blueprint.id}|${t.blueprint.rarity}`
+      if (seen.has(key)) return true
+      seen.add(key)
+    }
+    return false
+  }
+
   mergeTower = (uid: number): boolean => {
     const a = this.state.towers.find((x) => x.uid === uid)
     if (!a) return false
