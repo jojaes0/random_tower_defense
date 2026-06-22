@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import BtnIcon from '@/components/BtnIcon.vue'
 import GameField from '@/components/GameField.vue'
 import TowerIcon from '@/components/TowerIcon.vue'
@@ -41,6 +41,23 @@ const selectHero = (id: string) => {
     showMenu.value = false
   }
 }
+// 활성 모드 화면 오버레이 안내
+const modeBanner = computed(() => {
+  switch (buildMode.value) {
+    case 'common':
+      return { text: '타워 건설 — 빈 칸을 탭해 건설', cls: 'm-build' }
+    case 'merge':
+      return { text: '합성 모드 — 같은 종류 타워를 탭', cls: 'm-merge' }
+    case 'sell':
+      return { text: '판매 모드 — 타워를 탭하면 판매', cls: 'm-sell' }
+    case 'hero':
+      return { text: '영웅 선택권 — 빈 칸을 탭해 건설', cls: 'm-build' }
+    case 'legend':
+      return { text: '전설 선택권 — 빈 칸을 탭해 건설', cls: 'm-build' }
+    default:
+      return null
+  }
+})
 // 영웅/전설 선택권으로 1기 설치 완료 → 모드 해제(연속 설치 방지)
 const onPick = () => {
   buildMode.value = 'idle'
@@ -166,6 +183,37 @@ const toggleMenu = () => {
   showMenu.value = !showMenu.value
   if (showMenu.value) upgOpen.value = false
 }
+// 메뉴를 특정 탭으로 열기/토글(단축키 S/D)
+const openMenuTab = (t: 'mission' | 'terrazine' | 'quest') => {
+  if (showMenu.value && tab.value === t) {
+    showMenu.value = false
+    return
+  }
+  showMenu.value = true
+  tab.value = t
+  upgOpen.value = false
+}
+
+// PC 단축키: Q 타워 / W 합성 / E 판매 / R 가스도박 / A 업그레이드 / S 개인미션 / D 테라진
+const onKey = (e: KeyboardEvent) => {
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return
+  const tag = (e.target as HTMLElement | null)?.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return
+  if (state.phase === 'select-difficulty' || state.phase === 'won' || state.phase === 'lost') return
+  switch (e.key.toLowerCase()) {
+    case 'q': setCommon(); break
+    case 'w': setMerge(); break
+    case 'e': setSell(); break
+    case 'r': doGamble(); break
+    case 'a': toggleUpg(); break
+    case 's': openMenuTab('mission'); break
+    case 'd': openMenuTab('terrazine'); break
+    default: return
+  }
+  e.preventDefault()
+}
+onMounted(() => window.addEventListener('keydown', onKey))
+onUnmounted(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
@@ -245,9 +293,14 @@ const toggleMenu = () => {
       </ul>
     </aside>
 
-    <!-- 하단 바: 일반/합성/판매/가스/업그레이드/메뉴 (업그레이드·메뉴는 각 버튼 위로 펼침) -->
+    <!-- 활성 모드 오버레이 안내 -->
+    <Transition name="modeb">
+      <div v-if="modeBanner" class="mode-banner" :class="modeBanner.cls">{{ modeBanner.text }}</div>
+    </Transition>
+
+    <!-- 하단 바: 타워/합성/판매/가스/업그레이드/메뉴 (업그레이드·메뉴는 각 버튼 위로 펼침) -->
     <div class="bottombar">
-      <button class="bbtn" :class="{ active: buildMode === 'common' }" :disabled="state.minerals < BALANCE.towerCost" @click="setCommon"><BtnIcon name="tower" /><span>일반</span></button>
+      <button class="bbtn" :class="{ active: buildMode === 'common' }" :disabled="state.minerals < BALANCE.towerCost" @click="setCommon"><BtnIcon name="tower" /><span>타워</span></button>
       <button class="bbtn" :class="{ active: buildMode === 'merge' }" @click="setMerge"><BtnIcon name="merge" /><span>합성</span></button>
       <button class="bbtn sell-btn" :class="{ active: buildMode === 'sell' }" @click="setSell"><BtnIcon name="sell" /><span>판매</span></button>
       <div class="bbtn-slot gas-wrap">
@@ -352,6 +405,15 @@ const toggleMenu = () => {
 .life-msgs { position: fixed; top: 88px; left: 50%; transform: translateX(-50%); z-index: 36; pointer-events: none; display: flex; flex-direction: column; gap: 2px; align-items: center; }
 .life-msg { color: #ef4444; font-weight: 800; font-size: 24px; text-shadow: 0 2px 6px #000, 0 0 10px rgba(239, 68, 68, 0.6); animation: lifeup 1.3s ease-out forwards; }
 @keyframes lifeup { 0% { opacity: 0; transform: translateY(12px) scale(0.8); } 15% { opacity: 1; transform: translateY(0) scale(1.15); } 100% { opacity: 0; transform: translateY(-34px); } }
+
+/* 활성 모드 오버레이 안내 — 하단 바 바로 위 중앙 */
+.mode-banner { position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%); z-index: 12; padding: 7px 16px; border-radius: 999px; font-size: 13px; font-weight: 800; white-space: nowrap; pointer-events: none; border: 1.5px solid; background: rgba(8, 13, 24, 0.92); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5); animation: mbpulse 1.4s ease-in-out infinite; }
+.mode-banner.m-build { color: #93c5fd; border-color: #2563eb; }
+.mode-banner.m-merge { color: #c4b5fd; border-color: #7c3aed; }
+.mode-banner.m-sell { color: #fca5a5; border-color: #ef4444; }
+@keyframes mbpulse { 0%, 100% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5); } 50% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 14px currentColor; } }
+.modeb-enter-active, .modeb-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.modeb-enter-from, .modeb-leave-to { opacity: 0; transform: translate(-50%, 8px); }
 
 /* 하단 즉시 안내(스타크래프트 시스템 메시지 식) — 하단 바 위 중앙 */
 .notices { position: fixed; bottom: 112px; left: 50%; transform: translateX(-50%); z-index: 41; display: flex; flex-direction: column; gap: 5px; align-items: center; pointer-events: none; width: max-content; max-width: 92vw; }
